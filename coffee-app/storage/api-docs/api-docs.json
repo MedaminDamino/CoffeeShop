@@ -1,0 +1,1477 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Coffee Shop API",
+        "description": "API for managing coffee shop operations",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/register": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Register a new user",
+                "operationId": "8a56853624e025573120a09a4c75d468",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Registration successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Registration successful"
+                                        },
+                                        "token": {
+                                            "type": "string",
+                                            "example": "1|abc123..."
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Login user",
+                "operationId": "a3b306d14572d1f4bd6c064b3233e7b8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password123"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Login successful"
+                                        },
+                                        "token": {
+                                            "type": "string",
+                                            "example": "1|abc123..."
+                                        },
+                                        "user": {
+                                            "$ref": "#/components/schemas/User"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Invalid credentials"
+                    }
+                }
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Logout user",
+                "operationId": "fe8f3429cd6979b3b4517e186505f9f9",
+                "responses": {
+                    "200": {
+                        "description": "Logged out successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Logged out successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/api/branches": {
+            "get": {
+                "tags": [
+                    "Branches"
+                ],
+                "summary": "Get all branches",
+                "operationId": "8bad73dccf3e88f9ee9007d8d3eb1040",
+                "responses": {
+                    "200": {
+                        "description": "List of branches",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Branch"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Branches"
+                ],
+                "summary": "Create a new branch",
+                "operationId": "df88a7dda440ba67d2d3433731a1dbee",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "branch_name"
+                                ],
+                                "properties": {
+                                    "branch_name": {
+                                        "type": "string",
+                                        "example": "New Branch"
+                                    },
+                                    "branch_address": {
+                                        "type": "string",
+                                        "example": "456 Elm St"
+                                    },
+                                    "branch_phone": {
+                                        "type": "string",
+                                        "example": "+0987654321"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Branch created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Branch"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/branches/{id}": {
+            "get": {
+                "tags": [
+                    "Branches"
+                ],
+                "summary": "Get a specific branch",
+                "operationId": "c9388b859d392f0ff3b7077e95d29776",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Branch details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Branch"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Branch not found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Branches"
+                ],
+                "summary": "Update a branch",
+                "operationId": "65ebd1d6e03a7404ecbdc887f49b5d08",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "branch_name": {
+                                        "type": "string",
+                                        "example": "Updated Branch"
+                                    },
+                                    "branch_address": {
+                                        "type": "string",
+                                        "example": "789 Oak St"
+                                    },
+                                    "branch_phone": {
+                                        "type": "string",
+                                        "example": "+1122334455"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Branch updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Branch"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Branch not found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Branches"
+                ],
+                "summary": "Delete a branch",
+                "operationId": "b4945d42e09ef04578cb6e61d86f156d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Branch deleted"
+                    },
+                    "404": {
+                        "description": "Branch not found"
+                    }
+                }
+            }
+        },
+        "/api/categories": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Get all categories",
+                "operationId": "3f5817a34833d0a1f4af4548dd3aeaba",
+                "responses": {
+                    "200": {
+                        "description": "List of categories",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Category"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Create a new category",
+                "operationId": "71fcad552bb0eaba9fb191fd8d8dcab0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "cat_name"
+                                ],
+                                "properties": {
+                                    "cat_name": {
+                                        "type": "string",
+                                        "example": "Tea"
+                                    },
+                                    "cat_description": {
+                                        "type": "string",
+                                        "example": "Various tea options"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Category created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Category"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/categories/{id}": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Get a specific category",
+                "operationId": "c68e76d323c008827a9e47398b1583de",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Category details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Category"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Category not found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Update a category",
+                "operationId": "0e686b2748211cc688333ed705dc111f",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "cat_name": {
+                                        "type": "string",
+                                        "example": "Updated Tea"
+                                    },
+                                    "cat_description": {
+                                        "type": "string",
+                                        "example": "Updated description"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Category updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Category"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Category not found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "Delete a category",
+                "operationId": "4c12e22a7f8c617bd83bfa1fdc05428d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Category deleted"
+                    },
+                    "404": {
+                        "description": "Category not found"
+                    }
+                }
+            }
+        },
+        "/api/orders": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get all orders",
+                "operationId": "2cd7e03021e72d9d799c12dfe179c865",
+                "responses": {
+                    "200": {
+                        "description": "List of orders"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Create order",
+                "operationId": "d690d6834318e9b064df441e854de8b9",
+                "responses": {
+                    "201": {
+                        "description": "Order created"
+                    }
+                }
+            }
+        },
+        "/api/orders/{id}": {
+            "get": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get order",
+                "operationId": "c29621029e70f65247909d3e09031118",
+                "responses": {
+                    "200": {
+                        "description": "Order details"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Update order",
+                "operationId": "6a7029f5510ca08e28a2d58a5fe19439",
+                "responses": {
+                    "200": {
+                        "description": "Order updated"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Delete order",
+                "operationId": "303a7b797887b66c7790c4c187b54790",
+                "responses": {
+                    "204": {
+                        "description": "Order deleted"
+                    }
+                }
+            }
+        },
+        "/api/order-items": {
+            "post": {
+                "tags": [
+                    "Order Items"
+                ],
+                "summary": "Create order item",
+                "operationId": "3390f5f422c701c6e520cc66e9d18037",
+                "responses": {
+                    "201": {
+                        "description": "Order item created"
+                    }
+                }
+            }
+        },
+        "/api/order-items/{id}": {
+            "delete": {
+                "tags": [
+                    "Order Items"
+                ],
+                "summary": "Delete order item",
+                "operationId": "87d21d8e8c19f5d96b514a9aa273dede",
+                "responses": {
+                    "204": {
+                        "description": "Order item deleted"
+                    }
+                }
+            }
+        },
+        "/api/products": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get all products",
+                "operationId": "1bfaa78d1c2c3848ab8165c5dadcad3e",
+                "responses": {
+                    "200": {
+                        "description": "List of products",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Product"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Create a new product",
+                "operationId": "e8185e307706e2cd84bbcf5171e2f09d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "category_id",
+                                    "prod_name",
+                                    "prod_price"
+                                ],
+                                "properties": {
+                                    "category_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "prod_name": {
+                                        "type": "string",
+                                        "example": "Latte"
+                                    },
+                                    "prod_price": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 4.5
+                                    },
+                                    "prod_description": {
+                                        "type": "string",
+                                        "example": "Creamy latte"
+                                    },
+                                    "prod_image_url": {
+                                        "type": "string",
+                                        "example": "https://example.com/latte.jpg"
+                                    },
+                                    "prod_is_active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "prod_meta": {
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Product created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Product"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/products/{id}": {
+            "get": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Get a specific product",
+                "operationId": "7ab21ddb713501f3d4c2914892c02a21",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product details",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Product"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Update a product",
+                "operationId": "6a7e11900844cd85cff66e662b82bd4c",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "category_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "prod_name": {
+                                        "type": "string",
+                                        "example": "Updated Latte"
+                                    },
+                                    "prod_price": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 5
+                                    },
+                                    "prod_description": {
+                                        "type": "string",
+                                        "example": "Updated description"
+                                    },
+                                    "prod_image_url": {
+                                        "type": "string",
+                                        "example": "https://example.com/updated-latte.jpg"
+                                    },
+                                    "prod_is_active": {
+                                        "type": "boolean",
+                                        "example": true
+                                    },
+                                    "prod_meta": {
+                                        "type": "object"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Product updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Product"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Product not found"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Delete a product",
+                "operationId": "e80a6ca46716acee6b47ea1ac91663c0",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Product deleted"
+                    },
+                    "404": {
+                        "description": "Product not found"
+                    }
+                }
+            }
+        },
+        "/api/promotions": {
+            "get": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Get all promotions",
+                "operationId": "85d8d71a0110712ce76708e909112e34",
+                "responses": {
+                    "200": {
+                        "description": "List of promotions"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Create promotion",
+                "operationId": "c5b5ba49e5994f2d974cc4ca2ec9fa41",
+                "responses": {
+                    "201": {
+                        "description": "Promotion created"
+                    }
+                }
+            }
+        },
+        "/api/promotions/{id}": {
+            "put": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Update promotion",
+                "operationId": "fce5a502b951eb380403a36db4629890",
+                "responses": {
+                    "200": {
+                        "description": "Promotion updated"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Promotions"
+                ],
+                "summary": "Delete promotion",
+                "operationId": "93589e73e0f79aac0abdcf09903b06d7",
+                "responses": {
+                    "204": {
+                        "description": "Promotion deleted"
+                    }
+                }
+            }
+        },
+        "/api/promotion-usages": {
+            "post": {
+                "tags": [
+                    "Promotion Usages"
+                ],
+                "summary": "Create promotion usage",
+                "operationId": "87669c12da3689fce0813be13d75ec9f",
+                "responses": {
+                    "201": {
+                        "description": "Promotion usage created"
+                    }
+                }
+            }
+        },
+        "/api/reservations": {
+            "get": {
+                "tags": [
+                    "Reservations"
+                ],
+                "summary": "Get all reservations",
+                "operationId": "fbc6050d9f7fdb07075d3aaeb157ffa9",
+                "responses": {
+                    "200": {
+                        "description": "List of reservations"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Reservations"
+                ],
+                "summary": "Create reservation",
+                "operationId": "01e3d21dc330a31de025203bc142ffa3",
+                "responses": {
+                    "201": {
+                        "description": "Reservation created"
+                    }
+                }
+            }
+        },
+        "/api/reservations/{id}": {
+            "get": {
+                "tags": [
+                    "Reservations"
+                ],
+                "summary": "Get reservation",
+                "operationId": "a226b43b2a6a846245e658d01bf00720",
+                "responses": {
+                    "200": {
+                        "description": "Reservation details"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Reservations"
+                ],
+                "summary": "Delete reservation",
+                "operationId": "9b6641e4ded1ff7adfce352d589b85e9",
+                "responses": {
+                    "204": {
+                        "description": "Reservation deleted"
+                    }
+                }
+            }
+        },
+        "/api/tables": {
+            "get": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Get all tables",
+                "operationId": "218d07c9683fe7c4b9ca0c7d171c6d44",
+                "responses": {
+                    "200": {
+                        "description": "List of tables"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Create table",
+                "operationId": "f23627c67eec5ca8aafb331b730959c5",
+                "responses": {
+                    "201": {
+                        "description": "Table created"
+                    }
+                }
+            }
+        },
+        "/api/tables/{id}": {
+            "get": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Get table",
+                "operationId": "be5358434733b508d70a9e4ea180db5d",
+                "responses": {
+                    "200": {
+                        "description": "Table details"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Update table",
+                "operationId": "18b8243be010c3a6b0c3b3c15ed7bb36",
+                "responses": {
+                    "200": {
+                        "description": "Table updated"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Tables"
+                ],
+                "summary": "Delete table",
+                "operationId": "e4e1cae6d3e81cd5d4a5096785af348a",
+                "responses": {
+                    "204": {
+                        "description": "Table deleted"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "User": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "John Doe"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "john@example.com"
+                    },
+                    "email_verified_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Branch": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "branch_name": {
+                        "type": "string",
+                        "example": "Main Branch"
+                    },
+                    "branch_address": {
+                        "type": "string",
+                        "example": "123 Main St"
+                    },
+                    "branch_phone": {
+                        "type": "string",
+                        "example": "+1234567890"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Category": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "cat_name": {
+                        "type": "string",
+                        "example": "Coffee"
+                    },
+                    "cat_description": {
+                        "type": "string",
+                        "example": "Various coffee drinks"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Order": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "branch_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "ord_total_amount": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 25.5
+                    },
+                    "ord_status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "paid",
+                            "cancelled"
+                        ],
+                        "example": "pending"
+                    },
+                    "ord_payment_method": {
+                        "type": "string",
+                        "enum": [
+                            "cash",
+                            "online"
+                        ],
+                        "example": "cash"
+                    },
+                    "meta": {
+                        "type": "object"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "OrderItem": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "order_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "product_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "quantity": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 5.5
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Product": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "category_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "prod_name": {
+                        "type": "string",
+                        "example": "Espresso"
+                    },
+                    "prod_price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 2.5
+                    },
+                    "prod_description": {
+                        "type": "string",
+                        "example": "Rich and bold espresso"
+                    },
+                    "prod_image_url": {
+                        "type": "string",
+                        "example": "https://example.com/espresso.jpg"
+                    },
+                    "prod_is_active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "prod_meta": {
+                        "type": "object"
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/Category"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Promotion": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "code_promo": {
+                        "type": "string",
+                        "example": "DISCOUNT10"
+                    },
+                    "promo_description": {
+                        "type": "string",
+                        "example": "10% discount"
+                    },
+                    "promo_discount_type": {
+                        "type": "string",
+                        "enum": [
+                            "percent",
+                            "fixed"
+                        ],
+                        "example": "percent"
+                    },
+                    "promo_discount_value": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 10
+                    },
+                    "promo_start_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-10-01"
+                    },
+                    "promo_end_date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2023-10-31"
+                    },
+                    "promo_usage_limit": {
+                        "type": "integer",
+                        "example": 100
+                    },
+                    "promo_is_active": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "PromotionUsage": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "promotion_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "order_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Reservation": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "table_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "user_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "start_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2023-10-01 14:00:00"
+                    },
+                    "end_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2023-10-01 15:00:00"
+                    },
+                    "res_status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "confirmed",
+                            "canceled",
+                            "completed"
+                        ],
+                        "example": "pending"
+                    },
+                    "res_notes": {
+                        "type": "string",
+                        "example": "Special occasion"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Table": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "branch_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "table_number": {
+                        "type": "string",
+                        "example": "T1"
+                    },
+                    "capacity": {
+                        "type": "integer",
+                        "example": 4
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "available",
+                            "reserved",
+                            "out_of_service"
+                        ],
+                        "example": "available"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": "Authentication"
+        },
+        {
+            "name": "Branches",
+            "description": "Branches"
+        },
+        {
+            "name": "Categories",
+            "description": "Categories"
+        },
+        {
+            "name": "Orders",
+            "description": "Orders"
+        },
+        {
+            "name": "Order Items",
+            "description": "Order Items"
+        },
+        {
+            "name": "Products",
+            "description": "Products"
+        },
+        {
+            "name": "Promotions",
+            "description": "Promotions"
+        },
+        {
+            "name": "Promotion Usages",
+            "description": "Promotion Usages"
+        },
+        {
+            "name": "Reservations",
+            "description": "Reservations"
+        },
+        {
+            "name": "Tables",
+            "description": "Tables"
+        }
+    ]
+}
