@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 
-interface Column {
+interface Column<T = unknown> {
   key: string
   label: string
+  formatter?: (value: T) => string       
 }
 
-type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'checkbox' | 'datepicker'   | 'datetime-local'
+type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'checkbox' | 'datepicker' | 'datetime-local' | 'date' | 'time'
 
 interface SelectOption {
   label: string
@@ -41,6 +42,8 @@ const error = ref<string | null>(null)
 const showModal = ref(false)
 const submitting = ref(false)
 const form = ref<Record<string, unknown>>({})
+const errorMessage = ref<string | null>(null)
+const showRetry = ref(false)
 
 function resetForm() {
   const base: Record<string, unknown> = {}
@@ -89,8 +92,15 @@ function getCellValue(row: unknown, key: string) {
     : undefined
 }
 
+function getFormattedCellValue(row: unknown, column: Column) {
+  const value = getCellValue(row, column.key)
+  return column.formatter ? column.formatter(value) : value
+}
+
 async function submit() {
   submitting.value = true
+  errorMessage.value = null
+  showRetry.value = false
   try {
     // Basic required validation client-side
     for (const f of props.createFields) {
@@ -105,8 +115,23 @@ async function submit() {
     showModal.value = false
     resetForm()
     await reload()
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(e)
+    const error = e as { message?: string; response?: { status: number; data?: { error?: string } } }
+    if (error.message) {
+      errorMessage.value = error.message
+    } else if (error.response) {
+      if (error.response.status === 409) {
+        errorMessage.value = error.response.data?.error ?? 'Conflict error'
+      } else if (error.response.status >= 500) {
+        errorMessage.value = 'We encountered a technical issue while processing your request. Our team has been notified. Please try again in a few moments.'
+        showRetry.value = true
+      } else {
+        errorMessage.value = 'An error occurred. Please check your input.'
+      }
+    } else {
+      errorMessage.value = 'Network error. Please check your connection.'
+    }
   } finally {
     submitting.value = false
   }
@@ -135,7 +160,7 @@ async function submit() {
           </thead>
           <tbody>
             <tr v-for="r in rows" :key="(r as any).id">
-              <td v-for="c in columns" :key="c.key">{{ getCellValue(r, c.key) }}</td>
+              <td v-for="c in columns" :key="c.key">{{ getFormattedCellValue(r, c) }}</td>
               <td class="text-end">
                 <button class="btn btn-light btn-sm me-1" disabled>
                   <i class="bi bi-pencil"></i>
@@ -165,9 +190,23 @@ async function submit() {
                 <input v-model="form[field.key]" class="form-control" />
               </template>
 
-           
+              <template v-else-if="field.type === 'date'">
+                <input
+                  type="date"
+                  class="form-control"
+                  v-model="form[field.key]"
+                />
+              </template>
 
-               <template v-else-if="field.type === 'datetime-local'">
+              <template v-else-if="field.type === 'time'">
+                <input
+                  type="time"
+                  class="form-control"
+                  v-model="form[field.key]"
+                />
+              </template>
+
+              <template v-else-if="field.type === 'datetime-local'">
                 <input
                   type="datetime-local"
                   class="form-control"
@@ -219,6 +258,10 @@ async function submit() {
                 </div>
               </template>
             </div>
+            <div v-if="errorMessage" class="alert alert-danger mt-3">
+              {{ errorMessage }}
+              <button v-if="showRetry" @click="submit" :disabled="submitting" class="btn btn-sm btn-outline-danger mt-2">Retry</button>
+            </div>
           </div>
           <div class="modal-footer">
             <button
@@ -240,3 +283,4 @@ async function submit() {
     <div class="modal-backdrop fade show" v-if="showModal"></div>
   </div>
 </template>
+

@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@vuepic/vue-datepicker": "^11.0.2"
+    "@vuepic/vue-datepicker": "^11.0.2",
+    "dayjs": "^1.11.18"
   }
 }

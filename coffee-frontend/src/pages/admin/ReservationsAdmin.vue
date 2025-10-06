@@ -1,16 +1,34 @@
 <script setup lang="ts">
 import CrudTable from '@/components/admin/CrudTable.vue'
-import { getReservations, createReservation, type ReservationDTO } from '@/api/reservations'
+import { getReservations, createReservation } from '@/api/reservations'
 import { getTables, type TableDTO } from '@/api/tables'
+import { getUsers, type User as UserDTO } from '@/api/users'
 import { onMounted, ref, computed } from 'vue'
 
 const tables = ref<TableDTO[]>([])
+const users = ref<UserDTO[]>([])
 onMounted(async () => {
   tables.value = await getTables()
+  users.value = await getUsers()
 })
 
+function formatDateTime(value: string | unknown) {
+  if (!value) return ''
+  const date = new Date(value as string)
+  return date.toLocaleString('en-GB', { // en-GB gives DD/MM/YYYY
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+}
+  
 const reservationFields = computed(() => [
-  { key: 'userId', label: 'User ID', type: 'number' as const, required: true, min: 1 },
+  { key: 'userId', label: 'User ID', type: 'select' as const, required: true, min: 1,
+    options: users.value.map((u) => ({ label: `${u.name} (ID: ${u.id})`, value: u.id })), 
+   },
   {
     key: 'tableId',
     label: 'Table',
@@ -18,8 +36,8 @@ const reservationFields = computed(() => [
     required: true,
     options: tables.value.map((t) => ({ label: `Table ${t.number} (${t.capacity} seats)`, value: t.id })),
   },
-  { key: 'startAt', label: 'Start At', type: 'datetime-local' as const, required: true },
-  { key: 'endAt', label: 'End At', type: 'datetime-local' as const },
+  { key: 'startDate', label: 'Start Date', type: 'date' as const, required: true },
+  { key: 'startTime', label: 'Start Time', type: 'time' as const, required: true },
 
   {
     key: 'status',
@@ -39,16 +57,32 @@ const reservationFields = computed(() => [
 <template>
   <CrudTable
     title="Reservations"
-    :columns="[
-      { key: 'id', label: 'ID' },
-      { key: 'userId', label: 'User ID' },
-      { key: 'tableId', label: 'Table ID' },
-      { key: 'startAt', label: 'Start At' },
-      { key: 'status', label: 'Status' },
-    ]"
+  :columns="[
+    { key: 'id', label: 'ID' },
+    { key: 'userId', label: 'User ID' },
+    { key: 'tableId', label: 'Table ID' },
+    { 
+      key: 'startAt', 
+      label: 'Start At', 
+      formatter: (value) => formatDateTime(value as string) 
+    },
+  { key: 'status', label: 'Status' },
+]"
+
     :fetchAll="getReservations"
     :createFields="reservationFields"
-    :onCreate="(payload) => createReservation(payload as Pick<ReservationDTO, 'userId' | 'tableId' | 'startAt' | 'endAt' | 'status' | 'notes'>)"
+    :onCreate="(payload) => {
+      const transformed = {
+         userId: payload.userId as number,
+         tableId: payload.tableId as number,
+         startAt: (typeof payload.startDate === 'string' && typeof payload.startTime === 'string')
+          ? `${payload.startDate} ${payload.startTime}:00`
+          : '',
+         status: payload.status as 'pending' | 'confirmed' | 'canceled' | 'completed',
+         notes: payload.notes as string,
+       }
+      return createReservation(transformed)
+    }"
   />
 </template>
 

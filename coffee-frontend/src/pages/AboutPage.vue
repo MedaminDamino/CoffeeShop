@@ -1,5 +1,6 @@
 <template>
   <div class="about-page">
+    <NavBar />
     <div class="hero-section bg-primary text-white py-5">
       <div class="container">
         <div class="row">
@@ -81,10 +82,14 @@
         </div>
       </div>
     </div>
+    <AppFooter />
   </div>
 </template>
 
 <script setup lang="ts">
+import NavBar from '@/components/NavBar.vue'
+import AppFooter from '@/components/AppFooter.vue'
+
 // About page component
 </script>
 

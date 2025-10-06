@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue'
 
 import { getTables, type TableDTO } from '@/api/tables'
 import { createReservation } from '@/api/reservations'
+import NavBar from '@/components/NavBar.vue'
+import AppFooter from '@/components/AppFooter.vue'
 
 const name = ref('')
 const date = ref('')
@@ -33,6 +35,7 @@ async function submit() {
 </script>
 
 <template>
+  <NavBar />
   <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
       <div class="card shadow-sm">
@@ -48,14 +51,14 @@ async function submit() {
               <select v-model.number="tableId" class="form-select" required>
                 <option :value="null" disabled>Select a table</option>
                 <option v-for="t in tables" :key="t.id" :value="t.id">
-                  Table {{ t.number }} ({{ t.seats }} seats)
+                  Table {{ t.number }} ({{ t.capacity }} seats)
                 </option>
               </select>
             </div>
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">Date</label>
-                <input v-model="date" type="date" class="form-control" required />
+                <input v-model="date" type="date" class="form-control" :min="new Date().toISOString().split('T')[0]" required />
               </div>
               <div class="col-md-6">
                 <label class="form-label">Time</label>
@@ -74,4 +77,5 @@ async function submit() {
       </div>
     </div>
   </div>
+  <AppFooter />
 </template>

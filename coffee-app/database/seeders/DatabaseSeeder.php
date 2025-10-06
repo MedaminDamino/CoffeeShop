@@ -16,13 +16,5 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         $this->call(SuperAdminSeeder::class);
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'username' => 'testuser',
-            'email' => 'test@example.com',
-            'birthday' => '1990-01-01',
-            'password' => bcrypt('password'),
-        ]);
     }
 }

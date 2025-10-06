@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Reservation;
+use App\Models\Table;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 /**
  * @OA\Schema(
@@ -13,7 +15,6 @@ use Illuminate\Http\Request;
  *     @OA\Property(property="table_id", type="integer", example=1),
  *     @OA\Property(property="user_id", type="integer", example=1),
  *     @OA\Property(property="start_at", type="string", format="date-time", example="2023-10-01 14:00:00"),
- *     @OA\Property(property="end_at", type="string", format="date-time", example="2023-10-01 15:00:00"),
  *     @OA\Property(property="res_status", type="string", enum={"pending", "confirmed", "canceled", "completed"}, example="pending"),
  *     @OA\Property(property="res_notes", type="string", example="Special occasion"),
  *     @OA\Property(property="created_at", type="string", format="date-time"),
@@ -40,19 +41,42 @@ class ReservationController extends Controller
             'table_id' => 'required|exists:tables,id',
             'user_id' => 'required|exists:users,id',
             'start_at' => 'required|date',
-            'end_at' => 'nullable|date|after:start_at',
             'res_status' => 'in:pending,confirmed,canceled,completed',
             'res_notes' => 'nullable|string',
         ]);
 
+        $start = Carbon::parse($validated['start_at']);
+
+        if ($start->isPast()) {
+            return response()->json(['error' => 'Reservation date must be in the future'], 409);
+        }
+
         $validated['res_status'] = $validated['res_status'] ?? 'pending';
 
-        // Optional: check for overlapping reservations
+        $date = $start->toDateString();
+
+        // Check if user already has reservation on this date
+        $existsUser = Reservation::where('user_id', $validated['user_id'])
+            ->whereDate('start_at', $date)
+            ->exists();
+
+        if ($existsUser) {
+            return response()->json(['error' => 'You already have a reservation on this date'], 409);
+        }
+
+        // Check table capacity
+        $table = Table::find($validated['table_id']);
+        $count = Reservation::where('table_id', $validated['table_id'])
+            ->whereDate('start_at', $date)
+            ->count();
+
+        if ($count >= $table->capacity) {
+            return response()->json(['error' => 'Table is fully booked on this date'], 409);
+        }
+
+        // Check if table is already reserved at this time
         $exists = Reservation::where('table_id', $validated['table_id'])
-            ->where(function ($query) use ($validated) {
-                $query->whereBetween('start_at', [$validated['start_at'], $validated['end_at']])
-                      ->orWhereBetween('end_at', [$validated['start_at'], $validated['end_at']]);
-            })
+            ->where('start_at', $validated['start_at'])
             ->exists();
 
         if ($exists) {

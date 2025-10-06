@@ -11,9 +11,12 @@ class Reservation extends Model
         'user_id',
         'table_id',
         'start_at',
-        'end_at',
         'res_status',
         'res_notes',
+    ];
+
+    protected $casts = [
+        'start_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

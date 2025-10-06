@@ -16,7 +16,7 @@ return new class extends Migration
     $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
     $table->foreignId('table_id')->constrained('tables')->cascadeOnDelete();
     $table->timestampTz('start_at');
-    $table->timestampTz('end_at');
+    $table->timestampTz('end_at')->nullable();
     $table->enum('res_status', ['pending','confirmed','canceled','completed'])->default('pending');
     $table->text('res_notes')->nullable();
     $table->timestamps();

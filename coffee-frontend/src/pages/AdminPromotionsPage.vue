@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import NavBar from '@/components/NavBar.vue'
+import AppFooter from '@/components/AppFooter.vue'
 
 type Promo = { code: string; percent: number }
 const promos = ref<Promo[]>([{ code: 'WELCOME10', percent: 10 }])
@@ -15,6 +17,7 @@ function addPromo() {
 </script>
 
 <template>
+  <NavBar />
   <div class="row g-4">
     <div class="col-lg-6">
       <div class="card shadow-sm">
@@ -52,4 +55,5 @@ function addPromo() {
       </div>
     </div>
   </div>
+  <AppFooter />
 </template>

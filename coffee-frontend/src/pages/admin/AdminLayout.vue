@@ -1,8 +1,17 @@
+<script setup lang="ts">
+import NavBar from '@/components/NavBar.vue'
+import AppFooter from '@/components/AppFooter.vue'
+</script>
+
 <template>
-  <div class="container-fluid">
-    <div class="row">
-      <aside class="col-12 col-md-3 col-lg-2 bg-light border-end p-0">
-        <div class="list-group list-group-flush sticky-top" style="top: 0">
+  <NavBar />
+<div class="container-fluid" style="min-height: calc(100vh - 200px); padding-top: 100px;">
+    <div class="row" style="min-height: calc(100vh - 280px);">
+      <aside class="col-12 col-md-3 col-lg-2 bg-light border-end p-0 d-flex flex-column">
+        <div class="list-group list-group-flush flex-grow-1" style="overflow-y: auto;">
+          <RouterLink class="list-group-item list-group-item-action" to="/admin/menu"
+            >Menu</RouterLink
+          >
           <RouterLink class="list-group-item list-group-item-action" to="/admin/users"
             >Users</RouterLink
           >
@@ -29,9 +38,10 @@
           >
         </div>
       </aside>
-      <section class="col-12 col-md-9 col-lg-10 p-3">
+      <section class="col-12 col-md-9 col-lg-10 p-3 d-flex flex-column" style="padding-top: 5rem; padding-bottom: 2rem; min-height: calc(100vh - 280px);">
         <RouterView />
       </section>
     </div>
   </div>
+  <AppFooter />
 </template>

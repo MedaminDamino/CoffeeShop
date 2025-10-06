@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import NavBar from '@/components/NavBar.vue'
+import AppFooter from '@/components/AppFooter.vue'
 
 type CartItem = { id: number; name: string; price: number; qty: number }
 const cart = ref<CartItem[]>([])
@@ -17,6 +19,7 @@ function pay(type: 'counter' | 'online') {
 </script>
 
 <template>
+  <NavBar />
   <div class="row g-4">
     <div class="col-lg-8">
       <div class="card shadow-sm">
@@ -66,4 +69,5 @@ function pay(type: 'counter' | 'online') {
       </div>
     </div>
   </div>
+  <AppFooter />
 </template>

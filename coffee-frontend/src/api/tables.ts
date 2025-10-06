@@ -7,7 +7,6 @@ export interface TableDTO {
   status: 'available' | 'reserved' | 'out_of_service'
   branchId: number
 }
-
 export function getTables() {
   return api.get<{ id: number; table_number: string; capacity: number; status: 'available' | 'reserved' | 'out_of_service'; branch_id: number }[]>('/tables')
     .then((r) => r.data.map(t => ({

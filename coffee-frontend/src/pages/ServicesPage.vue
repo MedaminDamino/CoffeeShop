@@ -1,5 +1,6 @@
 <template>
   <div class="services-page">
+    <NavBar />
     <div class="hero-section bg-success text-white py-5">
       <div class="container">
         <div class="row">
@@ -136,10 +137,14 @@
         </div>
       </div>
     </div>
+    <AppFooter />
   </div>
 </template>
 
 <script setup lang="ts">
+import NavBar from '@/components/NavBar.vue'
+import AppFooter from '@/components/AppFooter.vue'
+
 // Services page component
 </script>
 

@@ -29,6 +29,8 @@ const router = createRouter({
         { path: 'reservations', component: () => import('../pages/admin/ReservationsAdmin.vue') },
         { path: 'orders', component: () => import('../pages/admin/OrdersAdmin.vue') },
         { path: 'promotions', component: () => import('../pages/admin/PromotionsAdmin.vue') },
+        { path: 'menu', component: () => import('../pages/MenuPage.vue') },
+
       ],
     },
   ],
