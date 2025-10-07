@@ -8,13 +8,14 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../pages/HomePage.vue'),
+      component: () => import('../pages/user/HomePage.vue'),
     },
-    { path: '/about', name: 'about', component: () => import('../pages/AboutPage.vue') },
-    { path: '/services', name: 'services', component: () => import('../pages/ServicesPage.vue') },
-    { path: '/menu', name: 'menu', component: () => import('../pages/ProductsPage.vue') },
-    { path: '/reserve', name: 'reserve', component: () => import('../pages/ReservePage.vue') },
-    { path: '/checkout', name: 'checkout', component: () => import('../pages/CheckoutPage.vue') },
+    { path: '/about', name: 'about', component: () => import('../pages/user/AboutPage.vue') },
+    { path: '/services', name: 'services', component: () => import('../pages/user/ServicesPage.vue') },
+    { path: '/menu', name: 'menu', component: () => import('../pages/user/ProductsPage.vue') },
+    { path: '/reserve', name: 'reserve', component: () => import('../pages/user/ReservePage.vue') },
+    { path: '/checkout', name: 'checkout', component: () => import('../pages/user/CheckoutPage.vue') },
+
     {
       path: '/admin',
       component: () => import('../pages/admin/AdminLayout.vue'),
@@ -29,8 +30,6 @@ const router = createRouter({
         { path: 'reservations', component: () => import('../pages/admin/ReservationsAdmin.vue') },
         { path: 'orders', component: () => import('../pages/admin/OrdersAdmin.vue') },
         { path: 'promotions', component: () => import('../pages/admin/PromotionsAdmin.vue') },
-        { path: 'menu', component: () => import('../pages/MenuPage.vue') },
-
       ],
     },
   ],

@@ -36,55 +36,62 @@ class ReservationController extends Controller
      * @OA\Post(path="/api/reservations", summary="Create reservation", tags={"Reservations"}, @OA\Response(response=201, description="Reservation created"))
      */
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'table_id' => 'required|exists:tables,id',
-            'user_id' => 'required|exists:users,id',
-            'start_at' => 'required|date',
-            'res_status' => 'in:pending,confirmed,canceled,completed',
-            'res_notes' => 'nullable|string',
-        ]);
+{
+    $validated = $request->validate([
+        'table_id' => 'required|exists:tables,id',
+        'user_id' => 'required|exists:users,id',
+        'start_at' => 'required|date',
+        'res_status' => 'in:pending,confirmed,canceled,completed',
+        'res_notes' => 'nullable|string',
+    ]);
 
-        $start = Carbon::parse($validated['start_at']);
+    $start = Carbon::parse($validated['start_at']);
+    $end = $start->copy()->addHours(2); // fixed variable and added copy()
 
-        if ($start->isPast()) {
-            return response()->json(['error' => 'Reservation date must be in the future'], 409);
-        }
-
-        $validated['res_status'] = $validated['res_status'] ?? 'pending';
-
-        $date = $start->toDateString();
-
-        // Check if user already has reservation on this date
-        $existsUser = Reservation::where('user_id', $validated['user_id'])
-            ->whereDate('start_at', $date)
-            ->exists();
-
-        if ($existsUser) {
-            return response()->json(['error' => 'You already have a reservation on this date'], 409);
-        }
-
-        // Check table capacity
-        $table = Table::find($validated['table_id']);
-        $count = Reservation::where('table_id', $validated['table_id'])
-            ->whereDate('start_at', $date)
-            ->count();
-
-        if ($count >= $table->capacity) {
-            return response()->json(['error' => 'Table is fully booked on this date'], 409);
-        }
-
-        // Check if table is already reserved at this time
-        $exists = Reservation::where('table_id', $validated['table_id'])
-            ->where('start_at', $validated['start_at'])
-            ->exists();
-
-        if ($exists) {
-            return response()->json(['error' => 'Table already reserved during this time'], 409);
-        }
-
-        return Reservation::create($validated);
+    // Check if date is in the past
+    if ($start->isPast()) {
+        return response()->json(['error' => 'Reservation date must be in the future'], 409);
     }
+
+    $validated['res_status'] = $validated['res_status'] ?? 'pending';
+    $validated['end_at'] = $end; // include end time
+
+    $date = $start->toDateString();
+
+    // Check if user already has a reservation on this date
+    $existsUser = Reservation::where('user_id', $validated['user_id'])
+        ->whereDate('start_at', $date)
+        ->exists();
+
+    if ($existsUser) {
+        return response()->json(['error' => 'You already have a reservation on this date'], 409);
+    }
+
+    // Check if table is already reserved during the same period (overlap check)
+    $overlap = Reservation::where('table_id', $validated['table_id'])
+        ->where(function ($query) use ($start, $end) {
+            $query->whereBetween('start_at', [$start, $end])
+                  ->orWhereBetween('end_at', [$start, $end])
+                  ->orWhere(function ($q) use ($start, $end) {
+                      $q->where('start_at', '<=', $start)
+                        ->where('end_at', '>=', $end);
+                  });
+        })
+        ->exists();
+
+    if ($overlap) {
+        return response()->json(['error' => 'Table is already reserved during this time'], 409);
+    }
+
+    // ✅ Create reservation
+    $reservation = Reservation::create($validated);
+
+    return response()->json([
+        'message' => 'Reservation created successfully',
+        'reservation' => $reservation
+    ], 201);
+}
+
 
     /**
      * @OA\Get(path="/api/reservations/{id}", summary="Get reservation", tags={"Reservations"}, @OA\Response(response=200, description="Reservation details"))

@@ -19,6 +19,9 @@
             <router-link class="nav-link" to="/menu">Menu</router-link>
           </li>
           <li class="nav-item">
+            <router-link class="nav-link" to="/reserve">Reservation</router-link>
+          </li>
+          <li class="nav-item">
             <router-link class="nav-link" to="#contact">Contact</router-link>
           </li>
         </ul>
@@ -65,11 +68,7 @@ const logout = async () => {
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-.navbar {
-  background-color: #faf8f5 !important;
-  padding: 1.5rem 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
+
 
 .navbar-brand {
   font-size: 1.5rem;
@@ -79,15 +78,31 @@ const logout = async () => {
 }
 
 .nav-link {
+  position: relative;
   color: #4a4a4a !important;
   font-weight: 500;
-  transition: color 0.3s ease;
   text-decoration: none;
+  transition: color 0.3s ease;
 }
 
-.nav-link:hover,
-.nav-link.router-link-active {
-  color: #2c2c2c !important;
+.nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0%;
+  height: 2px;
+  background-color: #8C6353; 
+  transition: width 0.3s ease-in-out;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+/* Optional: remove color change completely */
+.nav-link:hover {
+  color: #4a4a4a !important; /* keep original color */
 }
 
 .btn {

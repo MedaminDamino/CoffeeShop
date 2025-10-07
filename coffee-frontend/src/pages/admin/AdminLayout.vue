@@ -9,9 +9,6 @@ import AppFooter from '@/components/AppFooter.vue'
     <div class="row" style="min-height: calc(100vh - 280px);">
       <aside class="col-12 col-md-3 col-lg-2 bg-light border-end p-0 d-flex flex-column">
         <div class="list-group list-group-flush flex-grow-1" style="overflow-y: auto;">
-          <RouterLink class="list-group-item list-group-item-action" to="/admin/menu"
-            >Menu</RouterLink
-          >
           <RouterLink class="list-group-item list-group-item-action" to="/admin/users"
             >Users</RouterLink
           >

@@ -52,6 +52,44 @@ class UserController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/api/user/feedback",
+     *     summary="Submit user feedback",
+     *     tags={"Users"},
+     *     security={{"sanctum": {}}},
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="feedback", type="string", nullable=true, example="Great service!")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Feedback submitted successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Feedback submitted successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized"
+     *     )
+     * )
+     */
+    public function submitFeedback(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'feedback' => 'nullable|string',
+        ]);
+
+        $user->update(['feedback' => $request->feedback]);
+
+        return response()->json(['message' => 'Feedback submitted successfully']);
+    }
+
+    /**
      * @OA\Put(
      *     path="/api/users/{id}/role",
      *     summary="Update user role",

@@ -7,6 +7,7 @@ export interface User {
   email: string
   role: string
   birthday?: string
+  feedback?: string
   created_at: string
 }
 
@@ -16,4 +17,8 @@ export function getUsers() {
 
 export function updateUserRole(userId: number, role: string) {
   return api.put<User>(`/users/${userId}/role`, { role }).then((r) => r.data)
+}
+
+export function submitFeedback(feedback: string) {
+  return api.post<{ message: string }>('/user/feedback', { feedback }).then((r) => r.data)
 }

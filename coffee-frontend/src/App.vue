@@ -34,30 +34,6 @@ onMounted(() => {
   font-family: 'Poppins', sans-serif;
 }
 
-/* Navbar custom styles */
-.navbar-brand {
-  transition: transform 0.2s ease;
-}
-
-.navbar-brand:hover {
-  transform: scale(1.05);
-}
-
-.nav-link {
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.nav-link:hover {
-  background-color: #404040;
-  transform: translateY(-1px);
-}
-
-.nav-link.active {
-  background-color: #4A4A4A;
-  font-weight: 500;
-}
-
 /* Button hover effects */
 .btn {
   transition: all 0.3s ease;

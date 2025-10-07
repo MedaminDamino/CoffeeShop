@@ -15,7 +15,8 @@
                 Passion
               </h1>
               <p class="lead mb-5 text-muted">
-                Discover the finest single-origin beans, expertly roasted and brewed to perfection. Every cup tells a story.
+                Discover the finest single-origin beans, expertly roasted and brewed to perfection. Every cup tells a
+                story.
               </p>
               <div class="d-flex gap-3 flex-wrap">
                 <router-link class="btn btn-dark btn-lg px-5 py-3" to="menu">
@@ -29,11 +30,7 @@
           </div>
           <div class="col-lg-6 d-none d-lg-block">
             <div class="hero-image-container">
-              <img
-                src="/img1.jpg"
-                alt="Premium Coffee"
-                class="img-fluid rounded-4 shadow-lg"
-              />
+              <img src="/img1.jpg" alt="Premium Coffee" class="img-fluid rounded-4 shadow-lg" />
             </div>
           </div>
         </div>
@@ -51,7 +48,8 @@
               </div>
               <h3 class="h4 fw-bold mb-3">Single Origin</h3>
               <p class="text-muted mb-0">
-                Carefully sourced beans from the world's finest coffee regions, ensuring exceptional quality and unique flavor profiles.
+                Carefully sourced beans from the world's finest coffee regions, ensuring exceptional quality and unique
+                flavor profiles.
               </p>
             </div>
           </div>
@@ -62,7 +60,8 @@
               </div>
               <h3 class="h4 fw-bold mb-3">Fresh Roasted</h3>
               <p class="text-muted mb-0">
-                Roasted in small batches daily to guarantee peak freshness and bring out the natural complexity of each bean.
+                Roasted in small batches daily to guarantee peak freshness and bring out the natural complexity of each
+                bean.
               </p>
             </div>
           </div>
@@ -73,7 +72,8 @@
               </div>
               <h3 class="h4 fw-bold mb-3">Made with Love</h3>
               <p class="text-muted mb-0">
-                Every cup is crafted by skilled baristas who are passionate about delivering the perfect coffee experience.
+                Every cup is crafted by skilled baristas who are passionate about delivering the perfect coffee
+                experience.
               </p>
             </div>
           </div>
@@ -86,17 +86,14 @@
       <div class="container py-5">
         <div class="row align-items-center g-5">
           <div class="col-lg-6">
-            <img
-              src="/img3.jpg"
-              alt="Coffee Roasting"
-              class="img-fluid rounded-4 shadow"
-            />
+            <img src="/img3.jpg" alt="Coffee Roasting" class="img-fluid rounded-4 shadow" />
           </div>
           <div class="col-lg-6">
             <p class="text-uppercase mb-3 text-muted tracking-wide">Our Signature</p>
-            <h2 class="display-4 fw-bold mb-4 ">The Perfect Blend</h2>
+            <h2 class="display-4 fw-bold mb-4 hero-subtitle">The Perfect Blend</h2>
             <p class="lead text-muted mb-4">
-              Our master roasters have spent years perfecting a blend that balances rich chocolate notes with bright citrus undertones, creating a harmonious cup that delights the senses.
+              Our master roasters have spent years perfecting a blend that balances rich chocolate notes with bright
+              citrus undertones, creating a harmonious cup that delights the senses.
             </p>
             <ul class="list-unstyled mb-5">
               <li class="mb-3 d-flex align-items-start">
@@ -112,9 +109,9 @@
                 <span>Award-winning flavor profile</span>
               </li>
             </ul>
-            <button class="btn btn-dark btn-lg px-5 py-3">
+            <router-link class="btn btn-dark btn-lg px-5 py-3" to="menu">
               Shop Now
-            </button>
+            </router-link>
           </div>
         </div>
       </div>
@@ -124,23 +121,25 @@
     <section class="cta-section py-5">
       <div class="container py-5">
         <div class="cta-card text-center p-5 rounded-4">
-          <h2 class="display-5 fw-bold mb-4">Start Your Coffee Journey</h2>
+          <h2 class="display-5 fw-bold mb-4">We’d Love Your Feedback</h2>
           <p class="lead mb-5 text-muted">
-            Join our community of coffee lovers and get exclusive access to new blends, brewing tips, and special offers.
+            Share your thoughts about our coffee or let us know if you’d like to order something special.
           </p>
           <div class="row justify-content-center">
             <div class="col-lg-6">
-              <div class="input-group input-group-lg mb-3">
-                <input
-                  type="email"
-                  class="form-control py-3"
-                  placeholder="Enter your email"
-                  v-model="email"
-                />
-                <button class="btn btn-dark px-5" type="button">
-                  Subscribe
-                </button>
+              <div class="input-group input-group-lg mb-1">
               </div>
+              <textarea class="form-control py-3 mb-3 rounded-3" rows="4" placeholder="Write your feedback or order details..."
+                v-model="feedback"></textarea>
+              <div v-if="errorMessage" class="alert alert-danger mb-3" role="alert">
+                {{ errorMessage }}
+              </div>
+              <div v-if="successMessage" class="alert alert-success mb-3" role="alert">
+                {{ successMessage }}
+              </div>
+              <button class="btn btn-dark px-5 py-3 rounded-3" type="button" @click="sendFeedback">
+                Send Feedback
+              </button>
             </div>
           </div>
         </div>
@@ -148,6 +147,7 @@
     </section>
 
     <AppFooter />
+    <AuthModal />
   </div>
 </template>
 
@@ -156,8 +156,37 @@ import { ref } from 'vue'
 import { Coffee, Flame, Heart, Check } from 'lucide-vue-next'
 import NavBar from '@/components/NavBar.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import AuthModal from '@/components/AuthModal.vue'
+import { useAuthStore } from '@/stores/auth'
+import { Modal } from 'bootstrap'
+import { submitFeedback } from '@/api/users'
 
-const email = ref('')
+const authStore = useAuthStore()
+const feedback = ref('')
+const errorMessage = ref('')
+const successMessage = ref('')
+
+const sendFeedback = async () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+  if (!authStore.isAuthenticated) {
+    const modal = new Modal(document.getElementById('authModal')!)
+    modal.show()
+    return
+  }
+  if (feedback.value.trim() === '') {
+    errorMessage.value = 'You cannot send empty feedback'
+    return
+  }
+  try {
+    await submitFeedback(feedback.value)
+    successMessage.value = 'Feedback submitted successfully!'
+    feedback.value = ''
+  } catch (error: unknown) {
+   const err = error as { response?: { data?: { message?: string } } }
+   errorMessage.value = err.response?.data?.message || 'Failed to submit feedback'
+ }
+}
 </script>
 
 <style scoped>
@@ -169,32 +198,13 @@ const email = ref('')
 }
 
 /* Navigation */
-.navbar {
-  background-color: #EEEAE4 !important;
-  padding: 1.5rem 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
 
-.navbar-brand {
-  font-size: 1.5rem;
-  letter-spacing: 0.05em;
-}
-
-.nav-link {
-  color: #4a4a4a !important;
-  font-weight: 500;
-  transition: color 0.3s ease;
-}
-
-.nav-link:hover {
-  color: #2c2c2c !important;
-}
 
 /* Hero Section */
 .hero-section {
   min-height: 100vh;
   padding-top: 100px;
-  background: #EEEAE4 ;
+  background: #EEEAE4;
 }
 
 .hero-title {
@@ -203,6 +213,18 @@ const email = ref('')
   line-height: 1.1;
   color: #2c2c2c;
   letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+  font-family: 'Playfair Display', serif;
+  font-size: 3.5 rem;
+  line-height: 1.1;
+  color: #2c2c2c;
+  letter-spacing: -0.02em;
+}
+
+.hero-content .d-flex.gap-3.flex-wrap {
+  margin-bottom: 5px;
 }
 
 .tracking-wide {
@@ -216,9 +238,12 @@ const email = ref('')
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-20px);
   }
@@ -241,7 +266,7 @@ const email = ref('')
 }
 
 .feature-icon {
-  color: #8C6353 ;
+  color: #8C6353;
 }
 
 /* Signature Section */
@@ -255,20 +280,21 @@ const email = ref('')
 }
 
 .cta-card {
-  background: linear-gradient(135deg, #8b6f47 0%, #6b5538 100%);
+  background: #8C6353;
   color: white;
 }
 
 .cta-card h2,
 .cta-card p {
-  color: white;
+  color: #EEEAE4  ;
 }
 
 .cta-card .text-muted {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: #EEEAE4  !important;
 }
 
 .cta-card .form-control {
+  background-color: #EEEAE4;
   border: none;
   border-radius: 0.5rem 0 0 0.5rem;
 }
@@ -296,3 +322,4 @@ const email = ref('')
   }
 }
 </style>
+

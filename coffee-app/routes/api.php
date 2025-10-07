@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/user/feedback', [UserController::class, 'submitFeedback']);
     Route::get('/users', [UserController::class, 'index']);
     Route::put('/users/{user}/role', [UserController::class, 'updateRole']);
     Route::get('/docs', function () {
