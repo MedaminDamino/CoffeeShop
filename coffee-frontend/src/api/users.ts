@@ -15,6 +15,10 @@ export function getUsers() {
   return api.get<User[]>('/users').then((r) => r.data)
 }
 
+export function createUser(data: Pick<User, 'name' | 'username' | 'email' | 'role' | 'birthday'>) {
+  return api.post<User>('/users', data).then((r) => r.data)
+}
+
 export function updateUserRole(userId: number, role: string) {
   return api.put<User>(`/users/${userId}/role`, { role }).then((r) => r.data)
 }

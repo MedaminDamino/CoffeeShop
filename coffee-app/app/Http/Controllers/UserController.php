@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 /**
@@ -142,6 +143,64 @@ class UserController extends Controller
         if (!$user || !in_array($user->role, ['admin', 'super_admin'])) {
             abort(403, 'Admin access required');
         }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/users",
+     *     summary="Create a new user",
+     *     tags={"Users"},
+     *     security={{"sanctum": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name", "username", "email", "password", "role"},
+     *             @OA\Property(property="name", type="string", example="John Doe"),
+     *             @OA\Property(property="username", type="string", example="johndoe"),
+     *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
+     *             @OA\Property(property="password", type="string", format="password", example="Password123!"),
+     *             @OA\Property(property="role", type="string", enum={"user", "admin", "super_admin"}, example="user"),
+     *             @OA\Property(property="birthday", type="string", format="date", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="User created successfully",
+     *         @OA\JsonContent(ref="#/components/schemas/User")
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - Admin access required"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function store(Request $request)
+    {
+        $this->authorizeAdmin();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'role' => 'required|in:user,admin,super_admin',
+            'birthday' => 'nullable|date|before:today',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'username' => $request->username,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+            'birthday' => $request->birthday,
+        ]);
+
+        return response()->json($user, 201);
     }
 
     private function authorizeSuperAdmin()

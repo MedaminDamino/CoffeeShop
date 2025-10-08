@@ -17,12 +17,6 @@ export const useProductStore = defineStore('products', () => {
     } catch (err) {
       error.value = 'Failed to fetch products. Using mock data.'
       console.error(err)
-      // Mock data for testing
-      products.value = [
-        { id: 1, name: 'Espresso', price: 3.5, description: undefined, imageUrl: undefined, isActive: true, meta: undefined, categoryId: 1 },
-        { id: 2, name: 'Latte', price: 4.0, description: undefined, imageUrl: undefined, isActive: true, meta: undefined, categoryId: 1 },
-        { id: 3, name: 'Cappuccino', price: 4.5, description: undefined, imageUrl: undefined, isActive: true, meta: undefined, categoryId: 1 },
-      ]
     } finally {
       loading.value = false
     }

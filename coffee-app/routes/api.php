@@ -30,7 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/user/feedback', [UserController::class, 'submitFeedback']);
-    Route::get('/users', [UserController::class, 'index']);
+    Route::apiResource('users', UserController::class)->only(['index', 'store']);
     Route::put('/users/{user}/role', [UserController::class, 'updateRole']);
     Route::get('/docs', function () {
         return response()->file(storage_path('api-docs/api-docs.json'));
