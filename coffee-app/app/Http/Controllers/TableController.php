@@ -23,9 +23,16 @@ class TableController extends Controller
     /**
      * @OA\Get(path="/api/tables", summary="Get all tables", tags={"Tables"}, @OA\Response(response=200, description="List of tables"))
      */
-    public function index()
+    public function index(Request $request)
     {
-        return Table::with('branch')->get();
+        if ($request->has('per_page') || $request->has('page')) {
+            $perPage = $request->get('per_page', 10);
+            $page = $request->get('page', 1);
+
+            return Table::with('branch')->orderBy('id')->paginate($perPage, ['*'], 'page', $page);
+        }
+
+        return Table::with('branch')->orderBy('id')->get();
     }
 
     /**
@@ -51,9 +58,40 @@ class TableController extends Controller
         return $table->load('branch');
     }
 
-    /**
-     * @OA\Put(path="/api/tables/{id}", summary="Update table", tags={"Tables"}, @OA\Response(response=200, description="Table updated"))
-     */
+ /**
+ * @OA\Put(
+ *     path="/api/tables/{id}",
+ *     summary="Update table",
+ *     tags={"Tables"},
+ *     @OA\Parameter(
+ *         name="id",
+ *         in="path",
+ *         description="ID of the table to update",
+ *         required=true,
+ *         @OA\Schema(type="integer")
+ *     ),
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"branch_id","table_number","capacity"},
+ *             @OA\Property(property="branch_id", type="integer", example=1),
+ *             @OA\Property(property="table_number", type="string", example="T12"),
+ *             @OA\Property(property="capacity", type="integer", example=4),
+ *             @OA\Property(property="status", type="string", enum={"available","reserved","out_of_service"}, example="available")
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Table updated successfully"
+ *     ),
+ *     @OA\Response(
+ *         response=404,
+ *         description="Table not found"
+ *     )
+ * )
+ */
+
+
     public function update(Request $request, Table $table)
     {
         $table->update($request->all());

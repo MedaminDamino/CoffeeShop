@@ -7,14 +7,37 @@ export interface BranchDTO {
   phone?: string
 }
 
-export function getBranches() {
-  return api.get<{ id: number; branch_name: string; branch_address?: string; branch_phone?: string }[]>('/branches')
-    .then((r) => r.data.map(branch => ({
-      id: branch.id,
-      name: branch.branch_name,
-      address: branch.branch_address,
-      phone: branch.branch_phone
-    })))
+interface BranchRaw {
+  id: number
+  branch_name: string
+  branch_address?: string
+  branch_phone?: string
+}
+
+export function getBranches(params?: { page?: number; per_page?: number }) {
+  return api.get('/branches', { params }).then((r) => {
+    const data = r.data;
+    if (data && typeof data === 'object' && 'data' in data) {
+      // Paginated response
+      return {
+        ...data,
+        data: data.data.map((branch: BranchRaw) => ({
+          id: branch.id,
+          name: branch.branch_name,
+          address: branch.branch_address,
+          phone: branch.branch_phone
+        }))
+      };
+    } else {
+      // Regular array response
+      return data.map((branch: BranchRaw) => ({
+        id: branch.id,
+        name: branch.branch_name,
+        address: branch.branch_address,
+        phone: branch.branch_phone
+      }));
+    }
+  });
 }
 export function getBranch(id: number) {
   return api.get<{ id: number; branch_name: string; branch_address?: string; branch_phone?: string }>(`/branches/${id}`)

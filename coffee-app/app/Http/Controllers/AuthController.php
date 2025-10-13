@@ -9,20 +9,6 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 
-/**
- * @OA\Schema(
- *     schema="User",
- *     type="object",
- *     @OA\Property(property="id", type="integer", example=1),
- *     @OA\Property(property="name", type="string", example="johndoe"),
- *     @OA\Property(property="username", type="string", example="johndoe"),
- *     @OA\Property(property="email", type="string", format="email", example="john@example.com"),
- *     @OA\Property(property="role", type="string", enum={"user", "admin", "super_admin"}, example="user"),
- *     @OA\Property(property="birthday", type="string", format="date", nullable=true),
- *     @OA\Property(property="created_at", type="string", format="date-time"),
- *     @OA\Property(property="updated_at", type="string", format="date-time")
- * )
- */
 
 class AuthController extends Controller
 {

@@ -31,14 +31,14 @@
           v-for="table in tables"
           :key="table.id"
           class="table-card"
-          :class="{ 
+          :class="{
             selected: selectedTableId === table.id,
-            reserved: isTableReserved(table)
+            reserved: isTableReserved(table) || table.status === 'reserved'
           }"
           @click="selectTable(table)"
         >
           <div class="table-icon">
-            <i class="bi bi-circle-fill table-indicator"></i>
+            <i class="bi bi-circle-fill table-indicator" :class="{ reserved: isTableReserved(table) || table.status === 'reserved' }"></i>
             <span class="table-number">{{ table.number }}</span>
           </div>
           <div class="table-info">
@@ -49,7 +49,7 @@
             </p>
           </div>
           <div class="table-status">
-            <span v-if="isTableReserved(table)" class="status-badge reserved">
+            <span v-if="isTableReserved(table) || table.status === 'reserved'" class="status-badge reserved">
               <i class="bi bi-lock-fill"></i>
               Reserved
             </span>
@@ -186,6 +186,16 @@ onMounted(async () => {
   try {
     tables.value = await getTables()
     reservations.value = await getReservations()
+
+    // Set up real-time updates every 30 seconds
+    setInterval(async () => {
+      try {
+        const updatedReservations = await getReservations()
+        reservations.value = updatedReservations
+      } catch (error) {
+        console.error('Failed to update reservations:', error)
+      }
+    }, 30000) // 30 seconds
   } catch (error) {
     console.error(error)
     tables.value = []
@@ -194,17 +204,17 @@ onMounted(async () => {
 })
 
 function isTableReserved(table: TableDTO): boolean {
-  const now = new Date()
-  return reservations.value.some(res =>
-    res.tableId === table.id &&
-    res.status === 'confirmed' &&
-    new Date(res.startAt) <= now &&
-    new Date(res.startAt).getTime() + 2 * 60 * 60 * 1000 > now.getTime()
-  )
-}
+   const now = new Date()
+   return reservations.value.some(res =>
+     res.tableId === table.id &&
+     (res.status === 'confirmed' || res.status === 'pending') &&
+     new Date(res.startAt) <= now &&
+     new Date(res.startAt).getTime() + 2 * 60 * 60 * 1000 > now.getTime()
+   )
+ }
 
 function selectTable(table: TableDTO) {
-  if (isTableReserved(table)) return
+  if (isTableReserved(table) || table.status === 'reserved') return
   selectedTableId.value = table.id
   showReservationModal.value = true
 }
@@ -226,11 +236,11 @@ function decrementGuests() {
 }
 
 async function submitReservation() {
+  closeModal()
   errorMessage.value = ''
   successMessage.value = ''
-  
+
   if (!authStore.isAuthenticated) {
-    closeModal()
     const modal = new Modal(document.getElementById('authModal')!)
     modal.show()
     return
@@ -239,26 +249,29 @@ async function submitReservation() {
   if (!selectedTableId.value || !date.value || !time.value) return
 
   const startAt = `${date.value} ${time.value}:00`
-  
+
   try {
     await createReservation({
       userId: authStore.user!.id,
       tableId: selectedTableId.value,
       startAt,
-      status: 'confirmed',
+      status: 'pending',
       notes: `Guests: ${guests.value}`,
     })
-    
+
+    // Refresh reservations immediately after successful creation
+    reservations.value = await getReservations()
+
     successMessage.value = 'Reservation created successfully! We look forward to serving you.'
-    closeModal()
-    
+
     setTimeout(() => {
       successMessage.value = ''
     }, 5000)
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { error?: string } } }
-    errorMessage.value = err.response?.data?.error || 'Failed to create reservation'
-    
+    console.error('Reservation creation error:', error)
+    const err = error as { response?: { data?: { error?: string; message?: string }; status?: number } }
+    errorMessage.value = err.response?.data?.error || err.response?.data?.message || 'Failed to create reservation'
+
     setTimeout(() => {
       errorMessage.value = ''
     }, 5000)
@@ -422,7 +435,7 @@ async function submitReservation() {
   color: #4caf50;
 }
 
-.table-card.reserved .table-indicator {
+.table-indicator.reserved {
   color: #f44336;
 }
 

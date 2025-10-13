@@ -6,13 +6,34 @@ export interface CategoryDTO {
   description?: string
 }
 
-export async function getCategories() {
-  const response = await api.get<{ id: number; cat_name: string; cat_description?: string }[]>('/categories')
-  return response.data.map(cat => ({
-    id: cat.id,
-    name: cat.cat_name,
-    description: cat.cat_description
-  }))
+interface CategoryRaw {
+  id: number
+  cat_name: string
+  cat_description?: string
+}
+
+export async function getCategories(params?: { page?: number; per_page?: number }) {
+  const response = await api.get('/categories', { params })
+  const data = response.data;
+
+  if (data && typeof data === 'object' && 'data' in data) {
+    // Paginated response
+    return {
+      ...data,
+      data: data.data.map((category: CategoryRaw) => ({
+        id: category.id,
+        name: category.cat_name,
+        description: category.cat_description
+      }))
+    };
+  } else {
+    // Regular array response
+    return data.map((category: CategoryRaw) => ({
+      id: category.id,
+      name: category.cat_name,
+      description: category.cat_description
+    }));
+  }
 }
 
 export async function createCategory(payload: Pick<CategoryDTO, 'name' | 'description'>) {
@@ -26,4 +47,21 @@ export async function createCategory(payload: Pick<CategoryDTO, 'name' | 'descri
     name: response.data.cat_name,
     description: response.data.cat_description
   }
+}
+
+export async function updateCategory(id: number, payload: Partial<Pick<CategoryDTO, 'name' | 'description'>>) {
+  const apiPayload: Record<string, string | undefined> = {}
+  if (payload.name !== undefined) apiPayload.cat_name = payload.name
+  if (payload.description !== undefined) apiPayload.cat_description = payload.description
+
+  const response = await api.put<{ id: number; cat_name: string; cat_description?: string }>(`/categories/${id}`, apiPayload)
+  return {
+    id: response.data.id,
+    name: response.data.cat_name,
+    description: response.data.cat_description
+  }
+}
+
+export async function deleteCategory(id: number) {
+  await api.delete(`/categories/${id}`)
 }

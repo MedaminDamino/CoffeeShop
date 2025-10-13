@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
 import CrudTable from '@/components/admin/CrudTable.vue'
-import { getProducts, createProduct } from '@/api/products'
+import { getProducts, createProduct, updateProduct, deleteProduct } from '@/api/products'
 import type { Product } from '@/interfaces/Product'
 import { getCategories, type CategoryDTO } from '@/api/categories'
 
@@ -39,5 +39,14 @@ const productFields = computed(() => [
     :fetchAll="getProducts"
     :createFields="productFields"
     :onCreate="(payload) => createProduct(payload as Pick<Product, 'name' | 'price' | 'description' | 'imageUrl' | 'isActive' | 'categoryId'>)"
+    :enableEdit="true"
+    :enableDelete="true"
+    :editTitle="'Edit Product'"
+    :deleteTitle="'Delete Product'"
+    :deleteMessage="'Are you sure you want to delete this product? This action cannot be undone.'"
+    :onUpdate="(id, payload) => updateProduct(id as number, payload as Partial<Pick<Product, 'name' | 'price' | 'description' | 'imageUrl' | 'isActive' | 'categoryId'>>)"
+    :onDelete="(id) => deleteProduct(id as number)"
+    :enablePagination="true"
+    :defaultPageSize="5"
   />
 </template>

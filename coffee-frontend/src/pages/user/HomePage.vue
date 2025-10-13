@@ -147,7 +147,6 @@
     </section>
 
     <AppFooter />
-    <AuthModal />
   </div>
 </template>
 
@@ -156,7 +155,6 @@ import { ref } from 'vue'
 import { Coffee, Flame, Heart, Check } from 'lucide-vue-next'
 import NavBar from '@/components/NavBar.vue'
 import AppFooter from '@/components/AppFooter.vue'
-import AuthModal from '@/components/AuthModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { Modal } from 'bootstrap'
 import { submitFeedback } from '@/api/users'

@@ -35,8 +35,15 @@ class BranchController extends Controller
      *     )
      * )
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->has('per_page') || $request->has('page')) {
+            $perPage = $request->get('per_page', 10);
+            $page = $request->get('page', 1);
+
+            return Branch::with('tables')->paginate($perPage, ['*'], 'page', $page);
+        }
+
         return Branch::with('tables')->get();
     }
 

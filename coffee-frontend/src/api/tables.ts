@@ -7,18 +7,42 @@ export interface TableDTO {
   status: 'available' | 'reserved' | 'out_of_service'
   branchId: number
 }
-export function getTables() {
-  return api.get<{ id: number; table_number: string; capacity: number; status: 'available' | 'reserved' | 'out_of_service'; branch_id: number }[]>('/tables')
-    .then((r) => r.data.map(t => ({
-      id: t.id,
-      number: t.table_number,
-      capacity: t.capacity,
-      status: t.status,
-      branchId: t.branch_id
-    })))
+
+interface TableRaw {
+  id: number
+  table_number: string
+  capacity: number
+  status: 'available' | 'reserved' | 'out_of_service'
+  branch_id: number
+}
+export function getTables(params?: { page?: number; per_page?: number }) {
+  return api.get('/tables', { params }).then((r) => {
+    if (r.data && typeof r.data === 'object' && 'data' in r.data) {
+      // Paginated response
+      return {
+        ...r.data,
+        data: r.data.data.map((table: TableRaw) => ({
+          id: table.id,
+          number: table.table_number,
+          capacity: table.capacity,
+          status: table.status,
+          branchId: table.branch_id
+        }))
+      };
+    } else {
+      // Regular array response
+      return r.data.map((table: TableRaw) => ({
+        id: table.id,
+        number: table.table_number,
+        capacity: table.capacity,
+        status: table.status,
+        branchId: table.branch_id
+      }));
+    }
+  });
 }
 export function getTable(id: number) {
-  return api.get<{ id: number; table_number: string; capacity: number; status: 'available' | 'reserved' | 'out_of_service'; branch_id: number }>(`/tables/${id}`)
+  return api.get<TableRaw>(`/tables/${id}`)
     .then((r) => ({
       id: r.data.id,
       number: r.data.table_number,

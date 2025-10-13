@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CrudTable from '@/components/admin/CrudTable.vue'
-import { getReservations, createReservation } from '@/api/reservations'
+import { getReservations, createReservation, updateReservation, deleteReservation } from '@/api/reservations'
 import { getTables, type TableDTO } from '@/api/tables'
 import { getUsers, type User as UserDTO } from '@/api/users'
 import { onMounted, ref, computed } from 'vue'
@@ -24,10 +24,10 @@ function formatDateTime(value: string | unknown) {
     hour12: false
   })
 }
-  
+
 const reservationFields = computed(() => [
   { key: 'userId', label: 'User ID', type: 'select' as const, required: true, min: 1,
-    options: users.value.map((u) => ({ label: `${u.name} (ID: ${u.id})`, value: u.id })), 
+    options: users.value.map((u) => ({ label: `${u.name} (ID: ${u.id})`, value: u.id })),
    },
   {
     key: 'tableId',
@@ -43,6 +43,7 @@ const reservationFields = computed(() => [
     key: 'status',
     label: 'Status',
     type: 'select' as const,
+    required: true,
     options: [
       { label: 'Pending', value: 'pending' },
       { label: 'Confirmed', value: 'confirmed' },
@@ -61,10 +62,10 @@ const reservationFields = computed(() => [
     { key: 'id', label: 'ID' },
     { key: 'userId', label: 'User ID' },
     { key: 'tableId', label: 'Table ID' },
-    { 
-      key: 'startAt', 
-      label: 'Start At', 
-      formatter: (value) => formatDateTime(value as string) 
+    {
+      key: 'startAt',
+      label: 'Start At',
+      formatter: (value) => formatDateTime(value as string)
     },
   { key: 'status', label: 'Status' },
 ]"
@@ -83,6 +84,26 @@ const reservationFields = computed(() => [
        }
       return createReservation(transformed)
     }"
+    :enableEdit="true"
+    :enableDelete="true"
+    :editTitle="'Edit Reservation'"
+    :deleteTitle="'Delete Reservation'"
+    :deleteMessage="'Are you sure you want to delete this reservation? This action cannot be undone.'"
+    :onUpdate="(id, payload) => {
+      const transformed = {
+         userId: payload.userId as number,
+         tableId: payload.tableId as number,
+         startAt: (typeof payload.startDate === 'string' && typeof payload.startTime === 'string')
+          ? `${payload.startDate} ${payload.startTime}:00`
+          : '',
+         status: payload.status as 'pending' | 'confirmed' | 'canceled' | 'completed',
+         notes: payload.notes as string,
+       }
+      return updateReservation(id as number, transformed)
+    }"
+    :onDelete="(id) => deleteReservation(id as number)"
+    :enablePagination="true"
+    :defaultPageSize="5"
   />
 </template>
 

@@ -26,8 +26,15 @@ class OrderController extends Controller
     /**
      * @OA\Get(path="/api/orders", summary="Get all orders", tags={"Orders"}, @OA\Response(response=200, description="List of orders"))
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->has('per_page') || $request->has('page')) {
+            $perPage = $request->get('per_page', 10);
+            $page = $request->get('page', 1);
+
+            return Order::with(['items.product','user'])->paginate($perPage, ['*'], 'page', $page);
+        }
+
         return Order::with(['items.product','user'])->get();
     }
 

@@ -28,8 +28,15 @@ class PromotionController extends Controller
     /**
      * @OA\Get(path="/api/promotions", summary="Get all promotions", tags={"Promotions"}, @OA\Response(response=200, description="List of promotions"))
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->has('per_page') || $request->has('page')) {
+            $perPage = $request->get('per_page', 10);
+            $page = $request->get('page', 1);
+
+            return Promotion::paginate($perPage, ['*'], 'page', $page);
+        }
+
         return Promotion::all();
     }
 

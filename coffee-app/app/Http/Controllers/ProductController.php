@@ -45,8 +45,15 @@ class ProductController extends Controller
      *     )
      * )
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->has('per_page') || $request->has('page')) {
+            $perPage = $request->get('per_page', 10);
+            $page = $request->get('page', 1);
+
+            return Product::with('category')->paginate($perPage, ['*'], 'page', $page);
+        }
+
         return Product::with('category')->get();
     }
 

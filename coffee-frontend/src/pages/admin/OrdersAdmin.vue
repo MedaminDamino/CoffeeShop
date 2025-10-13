@@ -53,5 +53,7 @@ const orderFields = computed(() => [
     :fetchAll="getOrders"
     :createFields="orderFields"
     :onCreate="(payload) => createOrder(payload as Pick<OrderDTO, 'userId' | 'branchId' | 'totalAmount' | 'status' | 'paymentMethod'>)"
+    :enablePagination="true"
+    :defaultPageSize="5"
   />
 </template>

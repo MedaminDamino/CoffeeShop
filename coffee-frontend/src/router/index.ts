@@ -15,6 +15,10 @@ const router = createRouter({
     { path: '/menu', name: 'menu', component: () => import('../pages/user/ProductsPage.vue') },
     { path: '/reserve', name: 'reserve', component: () => import('../pages/user/ReservePage.vue') },
     { path: '/checkout', name: 'checkout', component: () => import('../pages/user/CheckoutPage.vue') },
+    { path: '/about', name: 'about', component: () => import('../pages/user/AboutPage.vue') },
+    { path: '/contact', name: 'contact', component: () => import('../pages/user/ContactPAge.vue') },
+
+
 
     {
       path: '/admin',
@@ -60,6 +64,11 @@ router.beforeEach((to, from, next) => {
   } else {
     next()
   }
+})
+
+// Scroll to top on route change
+router.afterEach(() => {
+  window.scrollTo(0, 0)
 })
 
 export default router

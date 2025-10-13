@@ -11,8 +11,8 @@ export interface User {
   created_at: string
 }
 
-export function getUsers() {
-  return api.get<User[]>('/users').then((r) => r.data)
+export function getUsers(params?: { page?: number; per_page?: number }) {
+  return api.get('/users', { params }).then((r) => r.data)
 }
 
 export function createUser(data: Pick<User, 'name' | 'username' | 'email' | 'role' | 'birthday'>) {

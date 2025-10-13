@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 
 interface Column<T = unknown> {
   key: string
   label: string
-  formatter?: (value: T) => string       
+  formatter?: (value: T) => string
 }
 
 type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'checkbox' | 'datepicker' | 'datetime-local' | 'date' | 'time' | 'password'
@@ -25,25 +25,66 @@ interface CreateField {
   options?: SelectOption[]
 }
 
+interface PaginatedResponse<T = unknown> {
+  data: T[]
+  total: number
+  current_page: number
+  per_page: number
+  last_page: number
+}
+
 const props = defineProps<{
   title: string
   columns: Column[]
-  fetchAll: () => Promise<unknown[]>
+  fetchAll: (params?: { page?: number; per_page?: number }) => Promise<unknown[] | PaginatedResponse>
   createTitle?: string
   createFields: CreateField[]
   onCreate: (payload: Record<string, unknown>) => Promise<unknown>
   initialValues?: Record<string, unknown>
+  // Edit functionality
+  editFields?: CreateField[]
+  onUpdate?: (id: number | string, payload: Record<string, unknown>) => Promise<unknown>
+  // Delete functionality
+  onDelete?: (id: number | string) => Promise<unknown>
+  // UI customization
+  enableEdit?: boolean
+  enableDelete?: boolean
+  editTitle?: string
+  deleteTitle?: string
+  deleteMessage?: string
+  // Pagination
+  enablePagination?: boolean
+  defaultPageSize?: number
 }>()
 
 const rows = ref<unknown[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+// Pagination state
+const currentPage = ref(1)
+const pageSize = ref(props.defaultPageSize || 5)
+const totalRecords = ref(0)
+const totalPages = ref(0)
+
 const showModal = ref(false)
 const submitting = ref(false)
 const form = ref<Record<string, unknown>>({})
 const errorMessage = ref<string | null>(null)
 const showRetry = ref(false)
+const successMessage = ref<string | null>(null)
+
+// Edit functionality
+const showEditModal = ref(false)
+const editingItem = ref<unknown>(null)
+const editForm = ref<Record<string, unknown>>({})
+const editSubmitting = ref(false)
+const editErrorMessage = ref<string | null>(null)
+
+// Delete functionality
+const showDeleteModal = ref(false)
+const deletingItem = ref<unknown>(null)
+const deleteSubmitting = ref(false)
 
 function resetForm() {
   const base: Record<string, unknown> = {}
@@ -61,7 +102,21 @@ async function reload() {
   loading.value = true
   error.value = null
   try {
-    rows.value = await props.fetchAll()
+    const params = props.enablePagination ? { page: currentPage.value, per_page: pageSize.value } : undefined
+    const response = await props.fetchAll(params)
+
+    if (props.enablePagination && response && typeof response === 'object' && 'data' in response) {
+      const paginatedResponse = response as PaginatedResponse
+      rows.value = paginatedResponse.data
+      totalRecords.value = paginatedResponse.total
+      totalPages.value = paginatedResponse.last_page
+      currentPage.value = paginatedResponse.current_page
+    } else {
+      rows.value = response as unknown[]
+      totalRecords.value = rows.value.length
+      totalPages.value = 1
+      currentPage.value = 1
+    }
   } catch {
     error.value = 'Failed to load data'
   } finally {
@@ -82,7 +137,56 @@ watch(
   { deep: true },
 )
 
-defineExpose({ reload })
+function changePage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    reload()
+  }
+}
+
+function changePageSize(size: number) {
+  pageSize.value = size
+  currentPage.value = 1
+  reload()
+}
+
+// Computed property for visible page numbers
+const visiblePages = computed(() => {
+  const pages: (number | string)[] = []
+  const total = totalPages.value
+  const current = currentPage.value
+
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) {
+      pages.push(i)
+    }
+  } else {
+    pages.push(1)
+
+    if (current > 4) {
+      pages.push('...')
+    }
+
+    const start = Math.max(2, current - 1)
+    const end = Math.min(total - 1, current + 1)
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+
+    if (current < total - 3) {
+      pages.push('...')
+    }
+
+    if (total > 1) {
+      pages.push(total)
+    }
+  }
+
+  return pages
+})
+
+defineExpose({ reload, changePage, changePageSize })
 
 function getCellValue(row: unknown, key: string) {
   const anyRow = row as Record<string, unknown>
@@ -97,28 +201,31 @@ function getFormattedCellValue(row: unknown, column: Column) {
 }
 
 async function submit() {
-  submitting.value = true
-  errorMessage.value = null
-  showRetry.value = false
-  try {
-    for (const f of props.createFields) {
-      if (
-        f.required &&
-        (form.value[f.key] === null || form.value[f.key] === '' || form.value[f.key] === undefined)
-      ) {
-        throw new Error(`${f.label} is required`)
-      }
-    }
-    await props.onCreate(form.value)
-    showModal.value = false
-    resetForm()
-    await reload()
-  } catch (e: unknown) {
+   submitting.value = true
+   errorMessage.value = null
+   successMessage.value = null
+   showRetry.value = false
+   try {
+     for (const f of props.createFields) {
+       if (
+         f.required &&
+         (form.value[f.key] === null || form.value[f.key] === '' || form.value[f.key] === undefined)
+       ) {
+         throw new Error(`${f.label} is required`)
+       }
+     }
+     await props.onCreate(form.value)
+     successMessage.value = `${props.title.slice(0, -1)} created successfully!`
+     showModal.value = false
+     resetForm()
+     await reload()
+     setTimeout(() => {
+       successMessage.value = null
+     }, 3000)
+   } catch (e: unknown) {
     console.error(e)
-    const error = e as { message?: string; response?: { status: number; data?: { error?: string } } }
-    if (error.message) {
-      errorMessage.value = error.message
-    } else if (error.response) {
+    const error = e as { message?: string; response?: { status: number; data?: { error?: string; message?: string } } }
+    if (error.response) {
       if (error.response.status === 409) {
         errorMessage.value = error.response.data?.error ?? 'Conflict error'
       } else if (error.response.status === 422) {
@@ -143,6 +250,120 @@ async function submit() {
     submitting.value = false
   }
 }
+
+// Edit functionality
+function openEditModal(item: unknown) {
+  editingItem.value = item
+  const itemObj = item as Record<string, unknown>
+  const fields = props.editFields || props.createFields
+
+  const base: Record<string, unknown> = {}
+  for (const field of fields) {
+    if (itemObj[field.key] !== undefined) {
+      base[field.key] = itemObj[field.key]
+    } else if (props.initialValues && field.key in props.initialValues) {
+      base[field.key] = props.initialValues[field.key]
+    } else {
+      base[field.key] = field.type === 'checkbox' ? false : null
+    }
+  }
+  editForm.value = base
+  showEditModal.value = true
+  editErrorMessage.value = null
+}
+
+function closeEditModal() {
+  showEditModal.value = false
+  editingItem.value = null
+  editForm.value = {}
+}
+
+async function submitEdit() {
+   if (!editingItem.value || !props.onUpdate) return
+
+   editSubmitting.value = true
+   editErrorMessage.value = null
+   successMessage.value = null
+
+   try {
+     const itemObj = editingItem.value as Record<string, unknown>
+     const id = itemObj.id as number | string
+
+     const fields = props.editFields || props.createFields
+     for (const f of fields) {
+       if (
+         f.required &&
+         (editForm.value[f.key] === null || editForm.value[f.key] === '' || editForm.value[f.key] === undefined)
+       ) {
+         throw new Error(`${f.label} is required`)
+       }
+     }
+
+     await props.onUpdate(id, editForm.value)
+     successMessage.value = `${props.title.slice(0, -1)} updated successfully!`
+     closeEditModal()
+     await reload()
+     setTimeout(() => {
+       successMessage.value = null
+     }, 3000)
+   } catch (e: unknown) {
+    console.error(e)
+    const error = e as { message?: string; response?: { status: number; data?: { error?: string; message?: string } } }
+    if (error.response) {
+      if (error.response.status === 409) {
+        editErrorMessage.value = error.response.data?.error ?? 'Conflict error'
+      } else if (error.response.status === 422) {
+        const data = error.response.data as { errors?: Record<string, string[]>, message?: string }
+        const errors = data?.errors
+        if (errors && typeof errors === 'object') {
+          const messages = Object.values(errors).flat().join(', ')
+          editErrorMessage.value = messages
+        } else {
+          editErrorMessage.value = data?.message ?? 'Validation failed. Please check your input.'
+        }
+      } else if (error.response.status >= 500) {
+        editErrorMessage.value = 'We encountered a technical issue while processing your request. Our team has been notified. Please try again in a few moments.'
+      } else {
+        editErrorMessage.value = 'An error occurred. Please check your input.'
+      }
+    } else {
+      editErrorMessage.value = 'Network error. Please check your connection.'
+    }
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+// Delete functionality
+function openDeleteModal(item: unknown) {
+  deletingItem.value = item
+  showDeleteModal.value = true
+}
+
+function closeDeleteModal() {
+  showDeleteModal.value = false
+  deletingItem.value = null
+}
+
+async function confirmDelete() {
+  if (!deletingItem.value || !props.onDelete) return
+
+  deleteSubmitting.value = true
+
+  try {
+    const itemObj = deletingItem.value as Record<string, unknown>
+    const id = itemObj.id as number | string
+
+    await props.onDelete(id)
+    closeDeleteModal()
+    await reload()
+  } catch (error: unknown) {
+    console.error(error)
+    // Handle error if needed
+  } finally {
+    deleteSubmitting.value = false
+  }
+}
 </script>
 
 <template>
@@ -152,7 +373,7 @@ async function submit() {
       <div class="header-content">
         <div class="title-section">
           <h1 class="admin-title">{{ title }}</h1>
-          <span class="record-count">{{ rows.length }} records</span>
+          <span class="record-count">{{ totalRecords || rows.length }} records</span>
         </div>
         <div class="header-actions">
           <slot name="header-extra"></slot>
@@ -169,6 +390,14 @@ async function submit() {
         </div>
       </div>
     </div>
+
+    <!-- Success Message -->
+    <transition name="fade">
+      <div v-if="successMessage" class="alert-message success">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>{{ successMessage }}</span>
+      </div>
+    </transition>
 
     <!-- Loading State -->
     <div v-if="loading" class="status-card loading">
@@ -210,10 +439,20 @@ async function submit() {
               <td class="actions-cell">
                 <slot name="actions" :row="r">
                   <div class="action-buttons">
-                    <button class="btn-action edit" disabled title="Edit">
+                    <button
+                      v-if="enableEdit"
+                      class="btn-action edit"
+                      @click="openEditModal(r)"
+                      title="Edit"
+                    >
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn-action delete" disabled title="Delete">
+                    <button
+                      v-if="enableDelete"
+                      class="btn-action delete"
+                      @click="openDeleteModal(r)"
+                      title="Delete"
+                    >
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
@@ -222,6 +461,86 @@ async function submit() {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="enablePagination" class="pagination-container">
+      <div class="pagination-controls">
+        <!-- Page Size Selector -->
+        <div class="page-size-selector">
+          <label class="page-size-label">Show:</label>
+          <select
+            :value="pageSize"
+            @change="changePageSize(Number(($event.target as HTMLSelectElement).value))"
+            class="page-size-select"
+          >
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+          </select>
+          <span class="page-size-text">per page</span>
+        </div>
+
+        <!-- Page Info -->
+        <div class="page-info">
+          <span>Page {{ currentPage }} of {{ totalPages }} ({{ totalRecords }} total)</span>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="page-navigation">
+          <button
+            @click="changePage(1)"
+            :disabled="currentPage === 1"
+            class="btn-page-nav"
+            title="First Page"
+          >
+            <i class="bi bi-chevron-double-left"></i>
+          </button>
+          <button
+            @click="changePage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="btn-page-nav"
+            title="Previous Page"
+          >
+            <i class="bi bi-chevron-left"></i>
+          </button>
+
+          <!-- Page Numbers -->
+          <template v-for="page in visiblePages" :key="page">
+            <button
+              v-if="page === '...'"
+              class="btn-page-number disabled"
+              disabled
+            >
+              ...
+            </button>
+            <button
+              v-else
+              @click="changePage(page as number)"
+              :class="['btn-page-number', { active: page === currentPage }]"
+            >
+              {{ page }}
+            </button>
+          </template>
+
+          <button
+            @click="changePage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="btn-page-nav"
+            title="Next Page"
+          >
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          <button
+            @click="changePage(totalPages)"
+            :disabled="currentPage === totalPages"
+            class="btn-page-nav"
+            title="Last Page"
+          >
+            <i class="bi bi-chevron-double-right"></i>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -242,6 +561,26 @@ async function submit() {
             </div>
 
             <div class="modal-body">
+              <!-- Error Message -->
+               
+              <transition name="fade">
+                <div v-if="errorMessage" class="error-message">
+                  <i class="bi bi-exclamation-circle-fill"></i>
+                  <div class="error-content">
+                    <p>{{ errorMessage }}</p>
+                    <button
+                      v-if="showRetry"
+                      @click="submit"
+                      :disabled="submitting"
+                      class="btn-retry-inline"
+                    >
+                      <i class="bi bi-arrow-clockwise"></i>
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              </transition>
+                <br>
               <form @submit.prevent="submit" class="modal-form">
                 <div v-for="field in createFields" :key="field.key" class="form-group">
                   <label class="form-label">
@@ -350,24 +689,6 @@ async function submit() {
                   </template>
                 </div>
 
-                <!-- Error Message -->
-                <transition name="fade">
-                  <div v-if="errorMessage" class="error-message">
-                    <i class="bi bi-exclamation-circle-fill"></i>
-                    <div class="error-content">
-                      <p>{{ errorMessage }}</p>
-                      <button 
-                        v-if="showRetry" 
-                        @click="submit" 
-                        :disabled="submitting" 
-                        class="btn-retry-inline"
-                      >
-                        <i class="bi bi-arrow-clockwise"></i>
-                        Retry
-                      </button>
-                    </div>
-                  </div>
-                </transition>
               </form>
             </div>
 
@@ -389,6 +710,206 @@ async function submit() {
                 <span v-if="submitting" class="spinner-small"></span>
                 <i v-else class="bi bi-check-lg"></i>
                 <span>{{ submitting ? 'Saving...' : 'Save' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
+    <!-- Edit Modal -->
+    <teleport to="body" v-if="enableEdit">
+      <transition name="modal">
+        <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+          <div class="modern-modal" @click.stop>
+            <button class="modal-close" @click="closeEditModal">
+              <i class="bi bi-x-lg"></i>
+            </button>
+
+            <div class="modal-header">
+              <div class="modal-icon">
+                <i class="bi bi-pencil-square"></i>
+              </div>
+              <h2 class="modal-title">{{ editTitle ?? `Edit ${title}` }}</h2>
+            </div>
+
+            <div class="modal-body">
+              <!-- Error Message -->
+              <transition name="fade">
+                <div v-if="editErrorMessage" class="error-message">
+                  <i class="bi bi-exclamation-circle-fill"></i>
+                  <div class="error-content">
+                    <p>{{ editErrorMessage }}</p>
+                  </div>
+                </div>
+              </transition>
+
+              <form @submit.prevent="submitEdit" class="modal-form">
+                <div v-for="field in (editFields || createFields)" :key="field.key" class="form-group">
+                  <label class="form-label">
+                    {{ field.label }}
+                    <span v-if="field.required" class="required-star">*</span>
+                  </label>
+
+                  <!-- Text Input -->
+                  <template v-if="field.type === 'text'">
+                    <input
+                      v-model="editForm[field.key]"
+                      class="form-input"
+                      autocomplete="off"
+                      :placeholder="`Enter ${field.label.toLowerCase()}`"
+                    />
+                  </template>
+
+                  <!-- Date Input -->
+                  <template v-else-if="field.type === 'date'">
+                    <input
+                      type="date"
+                      class="form-input"
+                      v-model="editForm[field.key]"
+                    />
+                  </template>
+
+                  <!-- Time Input -->
+                  <template v-else-if="field.type === 'time'">
+                    <input
+                      type="time"
+                      class="form-input"
+                      v-model="editForm[field.key]"
+                    />
+                  </template>
+
+                  <!-- DateTime Input -->
+                  <template v-else-if="field.type === 'datetime-local'">
+                    <input
+                      type="datetime-local"
+                      class="form-input"
+                      v-model="editForm[field.key]"
+                    />
+                  </template>
+
+                  <!-- Textarea -->
+                  <template v-else-if="field.type === 'textarea'">
+                    <textarea
+                      v-model="editForm[field.key] as string"
+                      class="form-input form-textarea"
+                      rows="4"
+                      :placeholder="`Enter ${field.label.toLowerCase()}`"
+                    ></textarea>
+                  </template>
+
+                  <!-- Number Input -->
+                  <template v-else-if="field.type === 'number'">
+                    <input
+                      v-model.number="editForm[field.key]"
+                      type="number"
+                      class="form-input"
+                      :min="field.min"
+                      :max="field.max"
+                      :step="field.step ?? 1"
+                      :placeholder="`Enter ${field.label.toLowerCase()}`"
+                    />
+                  </template>
+
+                  <!-- Select -->
+                  <template v-else-if="field.type === 'select'">
+                    <select v-model="editForm[field.key]" class="form-select">
+                      <option :value="null" disabled>Select {{ field.label.toLowerCase() }}</option>
+                      <option
+                        v-for="opt in field.options || []"
+                        :key="String(opt.value)"
+                        :value="opt.value"
+                      >
+                        {{ opt.label }}
+                      </option>
+                    </select>
+                  </template>
+
+                  <!-- Checkbox -->
+                  <template v-else-if="field.type === 'checkbox'">
+                    <div class="checkbox-wrapper">
+                      <label class="checkbox-label">
+                        <input
+                          class="checkbox-input"
+                          type="checkbox"
+                          v-model="editForm[field.key] as boolean"
+                        />
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">{{ field.label }}</span>
+                      </label>
+                    </div>
+                  </template>
+                </div>
+
+              </form>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn-modal-secondary"
+                :disabled="editSubmitting"
+                @click="closeEditModal"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn-modal-primary"
+                :disabled="editSubmitting"
+                @click="submitEdit"
+              >
+                <span v-if="editSubmitting" class="spinner-small"></span>
+                <i v-else class="bi bi-check-lg"></i>
+                <span>Save Changes</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </transition>
+    </teleport>
+
+    <!-- Delete Modal -->
+    <teleport to="body" v-if="enableDelete">
+      <transition name="modal">
+        <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
+          <div class="modern-modal" @click.stop>
+            <button class="modal-close" @click="closeDeleteModal">
+              <i class="bi bi-x-lg"></i>
+            </button>
+
+            <div class="modal-header">
+              <div class="modal-icon">
+                <i class="bi bi-exclamation-triangle"></i>
+              </div>
+              <h2 class="modal-title">{{ deleteTitle ?? 'Confirm Deletion' }}</h2>
+            </div>
+
+            <div class="modal-body">
+              <div class="delete-confirmation">
+                <p>{{ deleteMessage ?? `Are you sure you want to delete this ${title.toLowerCase()}?` }}</p>
+                <p class="warning-text">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn-modal-secondary"
+                :disabled="deleteSubmitting"
+                @click="closeDeleteModal"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn-modal-danger"
+                :disabled="deleteSubmitting"
+                @click="confirmDelete"
+              >
+                <span v-if="deleteSubmitting" class="spinner-small"></span>
+                <i v-else class="bi bi-trash"></i>
+                <span>Delete</span>
               </button>
             </div>
           </div>
@@ -874,6 +1395,21 @@ async function submit() {
   font-size: 0.9375rem;
 }
 
+.delete-confirmation {
+  text-align: center;
+}
+
+.delete-confirmation p {
+  margin: 0 0 1rem 0;
+  color: #1A2845;
+  font-size: 1rem;
+}
+
+.warning-text {
+  color: #c53030;
+  font-weight: 600;
+}
+
 .error-message {
   display: flex;
   align-items: flex-start;
@@ -970,6 +1506,17 @@ async function submit() {
   box-shadow: 0 4px 12px rgba(26, 40, 69, 0.2);
 }
 
+.btn-modal-danger {
+  background: #c53030;
+  color: white;
+}
+
+.btn-modal-danger:hover:not(:disabled) {
+  background: #9b2c2c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(197, 48, 48, 0.2);
+}
+
 .btn-modal-secondary:disabled,
 .btn-modal-primary:disabled {
   opacity: 0.5;
@@ -1010,6 +1557,110 @@ async function submit() {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* Pagination */
+.pagination-container {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 16px;
+  border: 2px solid #EEEAE4;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-size-label {
+  font-weight: 600;
+  color: #1A2845;
+  font-size: 0.875rem;
+}
+
+.page-size-select {
+  padding: 0.375rem 0.75rem;
+  border: 2px solid #EEEAE4;
+  border-radius: 8px;
+  background: white;
+  color: #1A2845;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.page-size-select:focus {
+  border-color: #8C6353;
+  box-shadow: 0 0 0 4px rgba(140, 99, 83, 0.1);
+}
+
+.page-size-text {
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.page-info {
+  font-size: 0.875rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.page-navigation {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-page-nav,
+.btn-page-number {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #EEEAE4;
+  background: white;
+  color: #1A2845;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-page-nav:hover:not(:disabled) {
+  background: #EEEAE4;
+  border-color: #8C6353;
+  color: #8C6353;
+  transform: scale(1.05);
+}
+
+.btn-page-number:hover:not(.active):not(.disabled) {
+  background: #EEEAE4;
+  border-color: #8C6353;
+  color: #8C6353;
+}
+
+.btn-page-number.active {
+  background: #1A2845;
+  color: white;
+  border-color: #1A2845;
+}
+
+.btn-page-nav:disabled,
+.btn-page-number.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* Responsive */
@@ -1067,6 +1718,20 @@ async function submit() {
 
   .modal-body {
     padding: 1.5rem;
+  }
+
+  .pagination-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .page-navigation {
+    justify-content: center;
+  }
+
+  .page-info {
+    text-align: center;
   }
 }
 </style>

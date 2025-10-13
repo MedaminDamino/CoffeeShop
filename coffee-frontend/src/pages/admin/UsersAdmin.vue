@@ -6,6 +6,8 @@
     :fetchAll="getUsers"
     :createFields="createFields"
     :onCreate="(payload) => createUser(payload as Pick<User & { password: string }, 'name' | 'username' | 'email' | 'password' | 'role' | 'birthday'>)"
+    :enablePagination="true"
+    :defaultPageSize="5"
   >
     <template #actions="{ row }">
       <select

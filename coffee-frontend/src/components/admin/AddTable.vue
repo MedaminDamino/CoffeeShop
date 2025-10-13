@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 
 interface Column<T = unknown> {
   key: string
@@ -29,34 +29,33 @@ const props = defineProps<{
   title: string
   columns: Column[]
   fetchAll: () => Promise<unknown[]>
-  // Edit functionality
-  editFields?: CreateField[]
-  onUpdate?: (id: number | string, payload: Record<string, unknown>) => Promise<unknown>
-  // Delete functionality
-  onDelete?: (id: number | string) => Promise<unknown>
-  // UI customization
-  enableEdit?: boolean
-  enableDelete?: boolean
-  editTitle?: string
-  deleteTitle?: string
-  deleteMessage?: string
+  createTitle?: string
+  createFields: CreateField[]
+  onCreate: (payload: Record<string, unknown>) => Promise<unknown>
+  initialValues?: Record<string, unknown>
 }>()
 
 const rows = ref<unknown[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// Edit functionality
-const showEditModal = ref(false)
-const editingItem = ref<unknown>(null)
-const editForm = ref<Record<string, unknown>>({})
-const editSubmitting = ref(false)
-const editErrorMessage = ref<string | null>(null)
+const showModal = ref(false)
+const submitting = ref(false)
+const form = ref<Record<string, unknown>>({})
+const errorMessage = ref<string | null>(null)
+const showRetry = ref(false)
 
-// Delete functionality
-const showDeleteModal = ref(false)
-const deletingItem = ref<unknown>(null)
-const deleteSubmitting = ref(false)
+function resetForm() {
+  const base: Record<string, unknown> = {}
+  for (const field of props.createFields) {
+    if (props.initialValues && field.key in props.initialValues) {
+      base[field.key] = props.initialValues[field.key]
+    } else {
+      base[field.key] = field.type === 'checkbox' ? false : null
+    }
+  }
+  form.value = base
+}
 
 async function reload() {
   loading.value = true
@@ -71,8 +70,17 @@ async function reload() {
 }
 
 onMounted(async () => {
+  resetForm()
   await reload()
 })
+
+watch(
+  () => props.createFields,
+  () => {
+    resetForm()
+  },
+  { deep: true },
+)
 
 defineExpose({ reload })
 
@@ -88,117 +96,51 @@ function getFormattedCellValue(row: unknown, column: Column) {
   return column.formatter ? column.formatter(value) : value
 }
 
-// Edit functionality
-function openEditModal(item: unknown) {
-  editingItem.value = item
-  const itemObj = item as Record<string, unknown>
-  const fields = props.editFields || props.columns.map(c => ({
-    key: c.key,
-    label: c.label,
-    type: 'text' as FieldType,
-    required: false
-  }))
-
-  const base: Record<string, unknown> = {}
-  for (const field of fields) {
-    if (itemObj[field.key] !== undefined) {
-      base[field.key] = itemObj[field.key]
-    } else {
-      base[field.key] = field.type === 'checkbox' ? false : null
-    }
-  }
-  editForm.value = base
-  showEditModal.value = true
-  editErrorMessage.value = null
-}
-
-function closeEditModal() {
-  showEditModal.value = false
-  editingItem.value = null
-  editForm.value = {}
-}
-
-async function submitEdit() {
-  if (!editingItem.value || !props.onUpdate) return
-
-  editSubmitting.value = true
-  editErrorMessage.value = null
-
+async function submit() {
+  submitting.value = true
+  errorMessage.value = null
+  showRetry.value = false
   try {
-    const itemObj = editingItem.value as Record<string, unknown>
-    const id = itemObj.id as number | string
-
-    const fields = props.editFields || props.columns.map(c => ({ key: c.key, label: c.label, type: 'text' as FieldType, required: false }))
-    for (const f of fields) {
+    for (const f of props.createFields) {
       if (
         f.required &&
-        (editForm.value[f.key] === null || editForm.value[f.key] === '' || editForm.value[f.key] === undefined)
+        (form.value[f.key] === null || form.value[f.key] === '' || form.value[f.key] === undefined)
       ) {
         throw new Error(`${f.label} is required`)
       }
     }
-
-    await props.onUpdate(id, editForm.value)
-    closeEditModal()
+    await props.onCreate(form.value)
+    showModal.value = false
+    resetForm()
     await reload()
   } catch (e: unknown) {
     console.error(e)
     const error = e as { message?: string; response?: { status: number; data?: { error?: string } } }
     if (error.message) {
-      editErrorMessage.value = error.message
+      errorMessage.value = error.message
     } else if (error.response) {
       if (error.response.status === 409) {
-        editErrorMessage.value = error.response.data?.error ?? 'Conflict error'
+        errorMessage.value = error.response.data?.error ?? 'Conflict error'
       } else if (error.response.status === 422) {
         const data = error.response.data as { errors?: Record<string, string[]>, message?: string }
         const errors = data?.errors
         if (errors && typeof errors === 'object') {
           const messages = Object.values(errors).flat().join(', ')
-          editErrorMessage.value = messages
+          errorMessage.value = messages
         } else {
-          editErrorMessage.value = data?.message ?? 'Validation failed. Please check your input.'
+          errorMessage.value = data?.message ?? 'Validation failed. Please check your input.'
         }
       } else if (error.response.status >= 500) {
-        editErrorMessage.value = 'We encountered a technical issue while processing your request. Our team has been notified. Please try again in a few moments.'
+        errorMessage.value = 'We encountered a technical issue while processing your request. Our team has been notified. Please try again in a few moments.'
+        showRetry.value = true
       } else {
-        editErrorMessage.value = 'An error occurred. Please check your input.'
+        errorMessage.value = 'An error occurred. Please check your input.'
       }
     } else {
-      editErrorMessage.value = 'Network error. Please check your connection.'
+      errorMessage.value = 'Network error. Please check your connection.'
     }
   } finally {
-    editSubmitting.value = false
-  }
-}
-
-// Delete functionality
-function openDeleteModal(item: unknown) {
-  deletingItem.value = item
-  showDeleteModal.value = true
-}
-
-function closeDeleteModal() {
-  showDeleteModal.value = false
-  deletingItem.value = null
-}
-
-async function confirmDelete() {
-  if (!deletingItem.value || !props.onDelete) return
-
-  deleteSubmitting.value = true
-
-  try {
-    const itemObj = deletingItem.value as Record<string, unknown>
-    const id = itemObj.id as number | string
-
-    await props.onDelete(id)
-    closeDeleteModal()
-    await reload()
-  } catch (error: unknown) {
-    console.error(error)
-    // Handle error if needed
-  } finally {
-    deleteSubmitting.value = false
+    submitting.value = false
   }
 }
 </script>
@@ -214,9 +156,16 @@ async function confirmDelete() {
         </div>
         <div class="header-actions">
           <slot name="header-extra"></slot>
-          <button class="btn-refresh" @click="reload()">
-            <i class="bi bi-arrow-clockwise"></i>Refresh
+          <button class="btn-add" @click="() => (showModal = true)">
+            <i class="bi bi-plus-lg"></i>
+            <span>Add New</span>
           </button>
+          <div class="header-actions">
+           <slot name="header-extra"></slot>
+             <button class="btn-refresh" @click="reload()">
+               <i class="bi bi-arrow-clockwise"></i>Refresh
+             </button>
+        </div>
         </div>
       </div>
     </div>
@@ -250,68 +199,45 @@ async function confirmDelete() {
                   {{ c.label }}
                 </div>
               </th>
-              <th class="actions-header">
-                <div class="th-content">Actions</div>
-              </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="r in rows" :key="(r as any).id" class="table-row">
               <td v-for="c in columns" :key="c.key" v-html="getFormattedCellValue(r, c)"></td>
-              <td class="actions-cell">
-                <div class="action-buttons">
-                  <button
-                    v-if="enableEdit"
-                    class="btn-action edit"
-                    @click="openEditModal(r)"
-                    title="Edit"
-                  >
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button
-                    v-if="enableDelete"
-                    class="btn-action delete"
-                    @click="openDeleteModal(r)"
-                    title="Delete"
-                  >
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </div>
-              </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Edit Modal -->
-    <teleport to="body" v-if="enableEdit">
+    <!-- Modal -->
+    <teleport to="body">
       <transition name="modal">
-        <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+        <div v-if="showModal" class="modal-overlay" @click="showModal = false">
           <div class="modern-modal" @click.stop>
-            <button class="modal-close" @click="closeEditModal">
+            <button class="modal-close" @click="showModal = false">
               <i class="bi bi-x-lg"></i>
             </button>
 
             <div class="modal-header">
               <div class="modal-icon">
-                <i class="bi bi-pencil-square"></i>
+                <i class="bi bi-plus-circle"></i>
               </div>
-              <h2 class="modal-title">{{ editTitle ?? `Edit ${title}` }}</h2>
+              <h2 class="modal-title">{{ createTitle ?? `Add ${title}` }}</h2>
             </div>
 
             <div class="modal-body">
-              <form @submit.prevent="submitEdit" class="modal-form">
-                <div v-for="field in (editFields || columns.map(c => ({ key: c.key, label: c.label, type: 'text' as FieldType, required: false })))" :key="field.key" class="form-group">
+              <form @submit.prevent="submit" class="modal-form">
+                <div v-for="field in createFields" :key="field.key" class="form-group">
                   <label class="form-label">
                     {{ field.label }}
-                    <span v-if="'required' in field && field.required" class="required-star">*</span>
+                    <span v-if="field.required" class="required-star">*</span>
                   </label>
 
                   <!-- Text Input -->
                   <template v-if="field.type === 'text'">
                     <input
-                      v-model="editForm[field.key]"
+                      v-model="form[field.key]"
                       class="form-input"
                       autocomplete="off"
                       :placeholder="`Enter ${field.label.toLowerCase()}`"
@@ -323,7 +249,18 @@ async function confirmDelete() {
                     <input
                       type="date"
                       class="form-input"
-                      v-model="editForm[field.key]"
+                      v-model="form[field.key]"
+                    />
+                  </template>
+
+                  <!-- Password Input -->
+                  <template v-else-if="field.type === 'password'">
+                    <input
+                      type="password"
+                      class="form-input"
+                      v-model="form[field.key]"
+                      autocomplete="new-password"
+                      :placeholder="`Enter ${field.label.toLowerCase()}`"
                     />
                   </template>
 
@@ -332,7 +269,7 @@ async function confirmDelete() {
                     <input
                       type="time"
                       class="form-input"
-                      v-model="editForm[field.key]"
+                      v-model="form[field.key]"
                     />
                   </template>
 
@@ -341,14 +278,14 @@ async function confirmDelete() {
                     <input
                       type="datetime-local"
                       class="form-input"
-                      v-model="editForm[field.key]"
+                      v-model="form[field.key]"
                     />
                   </template>
 
                   <!-- Textarea -->
                   <template v-else-if="field.type === 'textarea'">
                     <textarea
-                      v-model="editForm[field.key] as string"
+                      v-model="form[field.key] as string"
                       class="form-input form-textarea"
                       rows="4"
                       :placeholder="`Enter ${field.label.toLowerCase()}`"
@@ -358,22 +295,22 @@ async function confirmDelete() {
                   <!-- Number Input -->
                   <template v-else-if="field.type === 'number'">
                     <input
-                      v-model.number="editForm[field.key]"
+                      v-model.number="form[field.key]"
                       type="number"
                       class="form-input"
-                      :min="'min' in field ? field.min : undefined"
-                      :max="'max' in field ? field.max : undefined"
-                      :step="'step' in field ? field.step ?? 1 : 1"
+                      :min="field.min"
+                      :max="field.max"
+                      :step="field.step ?? 1"
                       :placeholder="`Enter ${field.label.toLowerCase()}`"
                     />
                   </template>
 
                   <!-- Select -->
                   <template v-else-if="field.type === 'select'">
-                    <select v-model="editForm[field.key]" class="form-select">
+                    <select v-model="form[field.key]" class="form-select">
                       <option :value="null" disabled>Select {{ field.label.toLowerCase() }}</option>
                       <option
-                        v-for="opt in ('options' in field ? field.options : []) || []"
+                        v-for="opt in field.options || []"
                         :key="String(opt.value)"
                         :value="opt.value"
                       >
@@ -389,7 +326,7 @@ async function confirmDelete() {
                         <input
                           class="checkbox-input"
                           type="checkbox"
-                          v-model="editForm[field.key] as boolean"
+                          v-model="form[field.key] as boolean"
                         />
                         <span class="checkbox-custom"></span>
                         <span class="checkbox-text">{{ field.label }}</span>
@@ -400,10 +337,19 @@ async function confirmDelete() {
 
                 <!-- Error Message -->
                 <transition name="fade">
-                  <div v-if="editErrorMessage" class="error-message">
+                  <div v-if="errorMessage" class="error-message">
                     <i class="bi bi-exclamation-circle-fill"></i>
                     <div class="error-content">
-                      <p>{{ editErrorMessage }}</p>
+                      <p>{{ errorMessage }}</p>
+                      <button
+                        v-if="showRetry"
+                        @click="submit"
+                        :disabled="submitting"
+                        class="btn-retry-inline"
+                      >
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Retry
+                      </button>
                     </div>
                   </div>
                 </transition>
@@ -414,68 +360,20 @@ async function confirmDelete() {
               <button
                 type="button"
                 class="btn-modal-secondary"
-                :disabled="editSubmitting"
-                @click="closeEditModal"
+                :disabled="submitting"
+                @click="showModal = false"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 class="btn-modal-primary"
-                :disabled="editSubmitting"
-                @click="submitEdit"
+                :disabled="submitting"
+                @click="submit"
               >
-                <span v-if="editSubmitting" class="spinner-small"></span>
+                <span v-if="submitting" class="spinner-small"></span>
                 <i v-else class="bi bi-check-lg"></i>
-                <span>Save Changes</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </teleport>
-
-    <!-- Delete Modal -->
-    <teleport to="body" v-if="enableDelete">
-      <transition name="modal">
-        <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
-          <div class="modern-modal" @click.stop>
-            <button class="modal-close" @click="closeDeleteModal">
-              <i class="bi bi-x-lg"></i>
-            </button>
-
-            <div class="modal-header">
-              <div class="modal-icon">
-                <i class="bi bi-exclamation-triangle"></i>
-              </div>
-              <h2 class="modal-title">{{ deleteTitle ?? 'Confirm Deletion' }}</h2>
-            </div>
-
-            <div class="modal-body">
-              <div class="delete-confirmation">
-                <p>{{ deleteMessage ?? `Are you sure you want to delete this ${title.toLowerCase()}?` }}</p>
-                <p class="warning-text">This action cannot be undone.</p>
-              </div>
-            </div>
-
-            <div class="modal-footer">
-              <button
-                type="button"
-                class="btn-modal-secondary"
-                :disabled="deleteSubmitting"
-                @click="closeDeleteModal"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                class="btn-modal-danger"
-                :disabled="deleteSubmitting"
-                @click="confirmDelete"
-              >
-                <span v-if="deleteSubmitting" class="spinner-small"></span>
-                <i v-else class="bi bi-trash"></i>
-                <span>Delete</span>
+                <span>{{ submitting ? 'Saving...' : 'Save' }}</span>
               </button>
             </div>
           </div>
@@ -538,6 +436,20 @@ async function confirmDelete() {
   align-items: center;
 }
 
+.btn-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #1A2845;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
 .btn-refresh {
   display: flex;
   align-items: center;
@@ -553,12 +465,20 @@ async function confirmDelete() {
   transition: all 0.3s ease;
 }
 
+.btn-add:hover {
+  background: #8C6353;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(26, 40, 69, 0.2);
+}
 .btn-refresh:hover {
   background: #8C6353;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(26, 40, 69, 0.2);
 }
 
+.btn-add i {
+  font-size: 1rem;
+}
 .btn-refresh i {
   font-size: 1rem;
 }
@@ -665,14 +585,6 @@ async function confirmDelete() {
   gap: 0.5rem;
 }
 
-.actions-header {
-  text-align: right;
-}
-
-.actions-header .th-content {
-  justify-content: flex-end;
-}
-
 .modern-table tbody tr {
   border-bottom: 1px solid #EEEAE4;
   transition: all 0.2s ease;
@@ -686,56 +598,6 @@ async function confirmDelete() {
   padding: 1rem 1.25rem;
   color: #1A2845;
   font-size: 0.9375rem;
-}
-
-.actions-cell {
-  text-align: right;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.btn-action {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  font-size: 0.95rem;
-}
-
-.btn-action.edit {
-  background: #EEEAE4;
-  color: #1A2845;
-}
-
-.btn-action.edit:hover:not(:disabled) {
-  background: #8C6353;
-  color: white;
-  transform: scale(1.1);
-}
-
-.btn-action.delete {
-  background: #fff5f5;
-  color: #c53030;
-}
-
-.btn-action.delete:hover:not(:disabled) {
-  background: #c53030;
-  color: white;
-  transform: scale(1.1);
-}
-
-.btn-action:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* Modal */
@@ -938,21 +800,6 @@ async function confirmDelete() {
   font-size: 0.9375rem;
 }
 
-.delete-confirmation {
-  text-align: center;
-}
-
-.delete-confirmation p {
-  margin: 0 0 1rem 0;
-  color: #1A2845;
-  font-size: 1rem;
-}
-
-.warning-text {
-  color: #c53030;
-  font-weight: 600;
-}
-
 .error-message {
   display: flex;
   align-items: flex-start;
@@ -975,8 +822,33 @@ async function confirmDelete() {
 }
 
 .error-content p {
-  margin: 0;
+  margin: 0 0 0.5rem 0;
   font-size: 0.9375rem;
+}
+
+.btn-retry-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: white;
+  color: #c53030;
+  border: 2px solid #feb2b2;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-retry-inline:hover:not(:disabled) {
+  background: #c53030;
+  color: white;
+}
+
+.btn-retry-inline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .modal-footer {
@@ -989,8 +861,7 @@ async function confirmDelete() {
 }
 
 .btn-modal-secondary,
-.btn-modal-primary,
-.btn-modal-danger {
+.btn-modal-primary {
   flex: 1;
   padding: 0.875rem 1.5rem;
   border: none;
@@ -1025,20 +896,8 @@ async function confirmDelete() {
   box-shadow: 0 4px 12px rgba(26, 40, 69, 0.2);
 }
 
-.btn-modal-danger {
-  background: #c53030;
-  color: white;
-}
-
-.btn-modal-danger:hover:not(:disabled) {
-  background: #9b2c2c;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(197, 48, 48, 0.2);
-}
-
 .btn-modal-secondary:disabled,
-.btn-modal-primary:disabled,
-.btn-modal-danger:disabled {
+.btn-modal-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1105,7 +964,11 @@ async function confirmDelete() {
     width: 100%;
   }
 
-  .btn-refresh {
+  .btn-add {
+    width: 100%;
+    justify-content: center;
+  }
+    .btn-refresh {
     width: 100%;
     justify-content: center;
   }

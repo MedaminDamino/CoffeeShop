@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CrudTable from '@/components/admin/CrudTable.vue'
-import { getTables, createTable, type TableDTO } from '@/api/tables'
+import { getTables, createTable, type TableDTO, updateTable, deleteTable } from '@/api/tables'
 import { getBranches, type BranchDTO } from '@/api/branches'
 import { onMounted, ref, computed } from 'vue'
 
@@ -39,5 +39,14 @@ const tableFields = computed(() => [
     :fetchAll="getTables"
     :createFields="tableFields"
     :onCreate="(payload) => createTable(payload as Pick<TableDTO, 'number' | 'capacity' | 'status' | 'branchId'>)"
+    :enableEdit="true"
+    :enableDelete="true"
+    :editTitle="'Edit Table'"
+    :deleteTitle="'Delete Table'"
+    :deleteMessage="'Are you sure you want to delete this Table? This action cannot be undone.'"
+    :onUpdate="(id, payload) => updateTable(id as number, payload as Partial<Pick<TableDTO, 'number' | 'capacity' | 'status' | 'branchId'>>)"
+    :onDelete="(id) => deleteTable(id as number)"
+    :enablePagination="true"
+    :defaultPageSize="5"
   />
 </template>

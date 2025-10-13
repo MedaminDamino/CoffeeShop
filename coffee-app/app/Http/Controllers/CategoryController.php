@@ -34,8 +34,15 @@ class CategoryController extends Controller
      *     )
      * )
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->has('per_page') || $request->has('page')) {
+            $perPage = $request->get('per_page', 10);
+            $page = $request->get('page', 1);
+
+            return Category::with('products')->paginate($perPage, ['*'], 'page', $page);
+        }
+
         return Category::with('products')->get();
     }
 
@@ -164,3 +171,4 @@ class CategoryController extends Controller
         return response()->noContent();
     }
 }
+

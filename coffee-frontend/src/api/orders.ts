@@ -10,17 +10,46 @@ export interface OrderDTO {
   meta?: object
 }
 
-export function getOrders() {
-  return api.get<{ id: number; user_id: number; branch_id: number; ord_total_amount: number; ord_status: 'pending' | 'paid' | 'cancelled'; ord_payment_method?: 'cash' | 'online'; meta?: object }[]>('/orders')
-    .then((r) => r.data.map(o => ({
-      id: o.id,
-      userId: o.user_id,
-      branchId: o.branch_id,
-      totalAmount: o.ord_total_amount,
-      status: o.ord_status,
-      paymentMethod: o.ord_payment_method,
-      meta: o.meta
-    })))
+interface OrderRaw {
+  id: number
+  user_id: number
+  branch_id: number
+  ord_total_amount: number
+  ord_status: 'pending' | 'paid' | 'cancelled'
+  ord_payment_method?: 'cash' | 'online'
+  meta?: object
+}
+
+export function getOrders(params?: { page?: number; per_page?: number }) {
+  return api.get('/orders', { params }).then((r) => {
+    const data = r.data;
+    if (data && typeof data === 'object' && 'data' in data) {
+      // Paginated response
+      return {
+        ...data,
+        data: data.data.map((order: OrderRaw) => ({
+          id: order.id,
+          userId: order.user_id,
+          branchId: order.branch_id,
+          totalAmount: order.ord_total_amount,
+          status: order.ord_status,
+          paymentMethod: order.ord_payment_method,
+          meta: order.meta
+        }))
+      };
+    } else {
+      // Regular array response
+      return data.map((order: OrderRaw) => ({
+        id: order.id,
+        userId: order.user_id,
+        branchId: order.branch_id,
+        totalAmount: order.ord_total_amount,
+        status: order.ord_status,
+        paymentMethod: order.ord_payment_method,
+        meta: order.meta
+      }));
+    }
+  });
 }
 export function getOrder(id: number) {
   return api.get<{ id: number; user_id: number; branch_id: number; ord_total_amount: number; ord_status: 'pending' | 'paid' | 'cancelled'; ord_payment_method?: 'cash' | 'online'; meta?: object }>(`/orders/${id}`)

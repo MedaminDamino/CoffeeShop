@@ -44,12 +44,20 @@ class UserController extends Controller
      *     )
      * )
      */
-    public function index()
+    public function index(Request $request)
     {
         $this->authorizeAdmin();
 
+        if ($request->has('per_page') || $request->has('page')) {
+            $perPage = $request->get('per_page', 10);
+            $page = $request->get('page', 1);
+
+            return User::select('id', 'name', 'username', 'email', 'role', 'birthday', 'created_at')
+                        ->paginate($perPage, ['*'], 'page', $page);
+        }
+
         return User::select('id', 'name', 'username', 'email', 'role', 'birthday', 'created_at')
-                   ->get();
+                    ->get();
     }
 
     /**
