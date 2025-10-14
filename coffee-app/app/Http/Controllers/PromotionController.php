@@ -34,10 +34,10 @@ class PromotionController extends Controller
             $perPage = $request->get('per_page', 10);
             $page = $request->get('page', 1);
 
-            return Promotion::paginate($perPage, ['*'], 'page', $page);
+            return Promotion::orderBy('id')->paginate($perPage, ['*'], 'page', $page);
         }
 
-        return Promotion::all();
+        return Promotion::orderBy('id')->get();
     }
 
     /**

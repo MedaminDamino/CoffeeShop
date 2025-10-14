@@ -41,10 +41,10 @@ class BranchController extends Controller
             $perPage = $request->get('per_page', 10);
             $page = $request->get('page', 1);
 
-            return Branch::with('tables')->paginate($perPage, ['*'], 'page', $page);
+            return Branch::with('tables')->orderBy('id')->paginate($perPage, ['*'], 'page', $page);
         }
 
-        return Branch::with('tables')->get();
+        return Branch::with('tables')->orderBy('id')->get();
     }
 
     /**
@@ -79,8 +79,18 @@ class BranchController extends Controller
             'branch_address' => 'nullable|string',
             'branch_phone' => 'nullable|string'
         ]);
-        return Branch::create($validated);
+
+        $phone = $request->input('branch_phone');
+
+        if ($phone && strlen($phone) != 8) {
+            return response()->json(['error' => 'The phone number should be exactly 8 digits'], 409);
+        }
+
+        $branch = Branch::create($validated);
+
+        return response()->json($branch, 201);
     }
+
 
     /**
      * @OA\Get(
@@ -140,6 +150,12 @@ class BranchController extends Controller
      */
     public function update(Request $request, Branch $branch)
     {
+        $phone = $request->input('branch_phone');
+
+        if ($phone && strlen($phone) != 8) {
+            return response()->json(['error' => 'The phone number should be exactly 8 digits'], 409);
+        }
+        
         $branch->update($request->all());
         return $branch;
     }

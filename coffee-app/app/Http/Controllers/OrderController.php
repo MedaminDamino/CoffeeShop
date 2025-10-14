@@ -32,10 +32,10 @@ class OrderController extends Controller
             $perPage = $request->get('per_page', 10);
             $page = $request->get('page', 1);
 
-            return Order::with(['items.product','user'])->paginate($perPage, ['*'], 'page', $page);
+            return Order::with(['items.product','user'])->orderBy('id')->paginate($perPage, ['*'], 'page', $page);
         }
 
-        return Order::with(['items.product','user'])->get();
+        return Order::with(['items.product','user'])->orderBy('id')->get();
     }
 
     /**

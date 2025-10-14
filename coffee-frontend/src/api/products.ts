@@ -12,7 +12,7 @@ interface ProductRaw {
   category_id: number
 }
 
-export async function getProducts(params?: { page?: number; per_page?: number }) {
+export async function getProducts(params?: { page?: number; per_page?: number; show_all?: string; sort_by?: string; sort_direction?: 'asc' | 'desc' }) {
   const response = await api.get('/products', { params })
   const data = response.data;
 
@@ -79,7 +79,7 @@ export async function updateProduct(id: number, product: Partial<Pick<Product, '
   if (product.meta !== undefined) apiPayload.prod_meta = product.meta
   if (product.categoryId !== undefined) apiPayload.category_id = product.categoryId
 
-  const response = await api.put<{ id: number; prod_name: string; prod_price: number; prod_description?: string; prod_image_url?: string; prod_is_active: boolean; prod_meta?: object; category_id: number }>(`/products/${id}`, apiPayload)
+  const response = await api.put<{ id: number; prod_name: string; prod_price: number; prod_description?: string; prod_image_url?: string; prod_is_active: boolean; prod_meta?: object; category_id: number }>(`/products/{id}`, apiPayload)
   return {
     id: response.data.id,
     name: response.data.prod_name,

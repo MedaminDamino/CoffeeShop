@@ -13,7 +13,9 @@ export const useProductStore = defineStore('products', () => {
     error.value = null
     try {
       const data = await getProducts()
-      products.value = data
+      console.log('Fetched products from API:', data)
+      // Note: Backend now handles filtering based on user role, so no client-side filtering needed
+      products.value = Array.isArray(data) ? data : data.data || []
     } catch (err) {
       error.value = 'Failed to fetch products. Using mock data.'
       console.error(err)

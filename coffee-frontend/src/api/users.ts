@@ -11,7 +11,7 @@ export interface User {
   created_at: string
 }
 
-export function getUsers(params?: { page?: number; per_page?: number }) {
+export function getUsers(params?: { page?: number; per_page?: number; sort_by?: string; sort_direction?: 'asc' | 'desc' }) {
   return api.get('/users', { params }).then((r) => r.data)
 }
 

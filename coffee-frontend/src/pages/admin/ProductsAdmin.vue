@@ -24,6 +24,10 @@ const productFields = computed(() => [
     options: categories.value.map((c) => ({ label: c.name, value: c.id })),
   },
 ])
+
+const fetchAllProducts = (params?: { page?: number; per_page?: number; sort_by?: string; sort_direction?: 'asc' | 'desc' }) => {
+  return getProducts({ ...params, show_all: 'true' })
+}
 </script>
 
 <template>
@@ -36,7 +40,7 @@ const productFields = computed(() => [
       { key: 'description', label: 'Description' },
       { key: 'isActive', label: 'Active' },
     ]"
-    :fetchAll="getProducts"
+    :fetchAll="fetchAllProducts"
     :createFields="productFields"
     :onCreate="(payload) => createProduct(payload as Pick<Product, 'name' | 'price' | 'description' | 'imageUrl' | 'isActive' | 'categoryId'>)"
     :enableEdit="true"

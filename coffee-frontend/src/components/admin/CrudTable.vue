@@ -33,10 +33,12 @@ interface PaginatedResponse<T = unknown> {
   last_page: number
 }
 
+type SortDirection = 'asc' | 'desc'
+
 const props = defineProps<{
   title: string
   columns: Column[]
-  fetchAll: (params?: { page?: number; per_page?: number }) => Promise<unknown[] | PaginatedResponse>
+  fetchAll: (params?: { page?: number; per_page?: number; sort_by?: string; sort_direction?: SortDirection }) => Promise<unknown[] | PaginatedResponse>
   createTitle?: string
   createFields: CreateField[]
   onCreate: (payload: Record<string, unknown>) => Promise<unknown>
@@ -60,6 +62,10 @@ const props = defineProps<{
 const rows = ref<unknown[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Sorting state
+const sortColumn = ref<string>('')
+const sortDirection = ref<SortDirection>('asc')
 
 // Pagination state
 const currentPage = ref(1)
@@ -86,6 +92,14 @@ const showDeleteModal = ref(false)
 const deletingItem = ref<unknown>(null)
 const deleteSubmitting = ref(false)
 
+// Computed property for dynamic table height
+const tableMinHeight = computed(() => {
+  const headerHeight = 80 // Approximate header height in pixels
+  const rowHeight = 60 // Approximate row height in pixels
+  const padding = 32 // Container padding
+  return headerHeight + (pageSize.value * rowHeight) + padding
+})
+
 function resetForm() {
   const base: Record<string, unknown> = {}
   for (const field of props.createFields) {
@@ -102,7 +116,9 @@ async function reload() {
   loading.value = true
   error.value = null
   try {
-    const params = props.enablePagination ? { page: currentPage.value, per_page: pageSize.value } : undefined
+    const params = props.enablePagination
+      ? { page: currentPage.value, per_page: pageSize.value, sort_by: sortColumn.value, sort_direction: sortDirection.value }
+      : sortColumn.value ? { sort_by: sortColumn.value, sort_direction: sortDirection.value } : undefined
     const response = await props.fetchAll(params)
 
     if (props.enablePagination && response && typeof response === 'object' && 'data' in response) {
@@ -126,6 +142,27 @@ async function reload() {
 
 onMounted(async () => {
   resetForm()
+  // Load sort state from localStorage
+  const savedSort = localStorage.getItem(`crud-table-sort-${props.title}`)
+  if (savedSort) {
+    try {
+      const { column, direction } = JSON.parse(savedSort)
+      sortColumn.value = column
+      sortDirection.value = direction
+    } catch {
+      // Fallback to default sort
+      if (props.columns.length > 0 && props.columns[0]) {
+        sortColumn.value = props.columns[0].key
+        sortDirection.value = 'asc'
+      }
+    }
+  } else {
+    // Set default sort to first column ascending
+    if (props.columns.length > 0 && props.columns[0]) {
+      sortColumn.value = props.columns[0].key
+      sortDirection.value = 'asc'
+    }
+  }
   await reload()
 })
 
@@ -146,6 +183,22 @@ function changePage(page: number) {
 
 function changePageSize(size: number) {
   pageSize.value = size
+  currentPage.value = 1
+  reload()
+}
+
+function sortBy(column: string) {
+  if (sortColumn.value === column) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortColumn.value = column
+    sortDirection.value = 'asc'
+  }
+  // Save sort state to localStorage
+  localStorage.setItem(`crud-table-sort-${props.title}`, JSON.stringify({
+    column: sortColumn.value,
+    direction: sortDirection.value
+  }))
   currentPage.value = 1
   reload()
 }
@@ -186,7 +239,7 @@ const visiblePages = computed(() => {
   return pages
 })
 
-defineExpose({ reload, changePage, changePageSize })
+defineExpose({ reload, changePage, changePageSize, sortBy })
 
 function getCellValue(row: unknown, key: string) {
   const anyRow = row as Record<string, unknown>
@@ -399,33 +452,59 @@ async function confirmDelete() {
       </div>
     </transition>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="status-card loading">
-      <div class="spinner"></div>
-      <span>Loading data...</span>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="error" class="status-card error">
-      <i class="bi bi-exclamation-triangle-fill"></i>
-      <div>
-        <p class="error-title">{{ error }}</p>
-        <button class="btn-retry" @click="reload">
-          <i class="bi bi-arrow-clockwise"></i>
-          Try Again
-        </button>
+    <!-- Table Container -->
+    <div class="table-container">
+      <!-- Loading State -->
+      <div v-if="loading" class="status-card loading">
+        <div class="spinner"></div>
+        <span>Loading data...</span>
       </div>
-    </div>
 
-    <!-- Table -->
-    <div v-else class="table-container">
-      <div class="table-wrapper">
+      <!-- Error State -->
+      <div v-else-if="error" class="status-card error">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <div>
+          <p class="error-title">{{ error }}</p>
+          <button class="btn-retry" @click="reload">
+            <i class="bi bi-arrow-clockwise"></i>
+            Try Again
+          </button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div v-else class="table-wrapper">
         <table class="modern-table">
           <thead>
             <tr>
-              <th v-for="c in columns" :key="c.key">
+              <th
+                v-for="c in columns"
+                :key="c.key"
+                @click="sortBy(c.key)"
+                class="sortable-header"
+                :class="{ 'is-active': sortColumn === c.key }"
+              >
                 <div class="th-content">
-                  {{ c.label }}
+                  <span class="label-text">{{ c.label }}</span>
+                  <div class="sort-indicator">
+                    <!-- Option 1: Using arrow-up-short / arrow-down-short for minimal look -->
+                    <i 
+                      class="bi sort-icon"
+                      :class="[
+                        sortColumn === c.key && sortDirection === 'asc' 
+                          ? 'bi-arrow-up-short is-active' 
+                          : 'bi-arrow-up-short'
+                      ]"
+                    ></i>
+                    <i 
+                      class="bi sort-icon"
+                      :class="[
+                        sortColumn === c.key && sortDirection === 'desc' 
+                          ? 'bi-arrow-down-short is-active' 
+                          : 'bi-arrow-down-short'
+                      ]"
+                    ></i>
+                  </div>
                 </div>
               </th>
               <th class="actions-header">
@@ -888,7 +967,6 @@ async function confirmDelete() {
             <div class="modal-body">
               <div class="delete-confirmation">
                 <p>{{ deleteMessage ?? `Are you sure you want to delete this ${title.toLowerCase()}?` }}</p>
-                <p class="warning-text">This action cannot be undone.</p>
               </div>
             </div>
 
@@ -1024,14 +1102,16 @@ async function confirmDelete() {
 .status-card {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1.25rem;
   padding: 2rem;
   border-radius: 16px;
   font-size: 1rem;
+  flex: 1;
 }
 
 .status-card.loading {
-  background: linear-gradient(135deg, #E7D7C9 0%, #EEEAE4 100%);
+  background: white;
   color: #1A2845;
   justify-content: center;
 }
@@ -1090,10 +1170,14 @@ async function confirmDelete() {
   border-radius: 16px;
   overflow: hidden;
   border: 2px solid #EEEAE4;
+  min-height: v-bind('tableMinHeight + "px"'); /* Dynamic height based on page size */
+  display: flex;
+  flex-direction: column;
 }
 
 .table-wrapper {
   overflow-x: auto;
+  flex: 1;
 }
 
 .modern-table {
@@ -1120,6 +1204,129 @@ async function confirmDelete() {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  padding: 16px 20px;
+  background-color: #EEEAE4;
+  border-bottom: 2px solid #E7D7C9;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-align: left;
+}
+
+.sortable-header::before {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #8C6353 0%, #1A2845 100%);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sortable-header:hover::before {
+  width: 100%;
+}
+
+.sortable-header:hover {
+  background-color: #E7D7C9;
+  transform: translateY(-1px);
+}
+
+.sortable-header.is-active {
+  color: #1A2845;
+  font-weight: 600;
+}
+
+.sortable-header.is-active::before {
+  width: 100%;
+}
+
+.th-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.label-text {
+  color: #1A2845;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  transition: color 0.3s ease;
+}
+
+.sortable-header:hover .label-text {
+  color: #8C6353;
+}
+
+.sort-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: -4px;
+  line-height: 0.5;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.sortable-header:hover .sort-indicator {
+  opacity: 0.7;
+}
+
+.sortable-header.is-active .sort-indicator {
+  opacity: 1;
+}
+
+.sort-icon {
+  color: #8C6353;
+  font-size: 1.2rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+}
+
+.sort-icon.is-active {
+  color: #1A2845;
+  transform: scale(1.3);
+  filter: drop-shadow(0 1px 2px rgba(26, 40, 69, 0.3));
+  font-weight: bold;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sortable-header {
+    padding: 12px 16px;
+  }
+  
+  .label-text {
+    font-size: 0.85rem;
+  }
+  
+  .sort-icon {
+    font-size: 1rem;
+  }
+}
+
+/* Focus styles for accessibility */
+.sortable-header:focus-visible {
+  outline: 2px solid #8C6353;
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+/* Animation for sort change */
+@keyframes sortPulse {
+  0%, 100% { transform: scale(1.3); }
+  50% { transform: scale(1.5); }
+}
+
+.sort-icon.is-active {
+  animation: sortPulse 0.4s ease-out;
 }
 
 .actions-header {
@@ -1251,6 +1458,9 @@ async function confirmDelete() {
   background: linear-gradient(135deg, #E7D7C9 0%, #EEEAE4 100%);
   border-radius: 24px 24px 0 0;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .modal-icon {
@@ -1506,13 +1716,25 @@ async function confirmDelete() {
   box-shadow: 0 4px 12px rgba(26, 40, 69, 0.2);
 }
 
+
 .btn-modal-danger {
-  background: #c53030;
-  color: white;
+  background: #FF4D5A;
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn-modal-danger:hover:not(:disabled) {
-  background: #9b2c2c;
+  background: #E63946;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(197, 48, 48, 0.2);
 }

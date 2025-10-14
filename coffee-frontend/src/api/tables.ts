@@ -15,7 +15,7 @@ interface TableRaw {
   status: 'available' | 'reserved' | 'out_of_service'
   branch_id: number
 }
-export function getTables(params?: { page?: number; per_page?: number }) {
+export function getTables(params?: { page?: number; per_page?: number; sort_by?: string; sort_direction?: 'asc' | 'desc' }) {
   return api.get('/tables', { params }).then((r) => {
     if (r.data && typeof r.data === 'object' && 'data' in r.data) {
       // Paginated response

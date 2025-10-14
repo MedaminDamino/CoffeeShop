@@ -12,7 +12,7 @@ interface CategoryRaw {
   cat_description?: string
 }
 
-export async function getCategories(params?: { page?: number; per_page?: number }) {
+export async function getCategories(params?: { page?: number; per_page?: number; sort_by?: string; sort_direction?: 'asc' | 'desc' }) {
   const response = await api.get('/categories', { params })
   const data = response.data;
 

@@ -62,6 +62,7 @@ const openLoginModal = () => {
 
 const logout = async () => {
   await authStore.logout()
+  router.push('/');
 }
 </script>
 

@@ -48,16 +48,40 @@ class UserController extends Controller
     {
         $this->authorizeAdmin();
 
+        $query = User::select('id', 'name', 'username', 'email', 'role', 'birthday', 'created_at');
+
+        // Handle sorting
+        if ($request->has('sort_by')) {
+            $sortBy = $request->get('sort_by');
+            $sortDirection = $request->get('sort_direction', 'asc');
+
+            // Map frontend column keys to database columns
+            $columnMapping = [
+                'id' => 'id',
+                'username' => 'username',
+                'email' => 'email',
+                'role' => 'role',
+                'birthday' => 'birthday',
+                'created_at' => 'created_at',
+            ];
+
+            if (array_key_exists($sortBy, $columnMapping)) {
+                $query->orderBy($columnMapping[$sortBy], $sortDirection);
+            } else {
+                $query->orderBy('id', 'asc'); // Default fallback
+            }
+        } else {
+            $query->orderBy('id', 'asc'); // Default sort
+        }
+
         if ($request->has('per_page') || $request->has('page')) {
             $perPage = $request->get('per_page', 10);
             $page = $request->get('page', 1);
 
-            return User::select('id', 'name', 'username', 'email', 'role', 'birthday', 'created_at')
-                        ->paginate($perPage, ['*'], 'page', $page);
+            return $query->paginate($perPage, ['*'], 'page', $page);
         }
 
-        return User::select('id', 'name', 'username', 'email', 'role', 'birthday', 'created_at')
-                    ->get();
+        return $query->get();
     }
 
     /**

@@ -25,14 +25,38 @@ class TableController extends Controller
      */
     public function index(Request $request)
     {
+        $query = Table::with('branch');
+
+        // Handle sorting
+        if ($request->has('sort_by')) {
+            $sortBy = $request->get('sort_by');
+            $sortDirection = $request->get('sort_direction', 'asc');
+
+            // Map frontend column keys to database columns
+            $columnMapping = [
+                'id' => 'id',
+                'number' => 'table_number',
+                'capacity' => 'capacity',
+                'status' => 'status',
+            ];
+
+            if (array_key_exists($sortBy, $columnMapping)) {
+                $query->orderBy($columnMapping[$sortBy], $sortDirection);
+            } else {
+                $query->orderBy('id', 'asc'); // Default fallback
+            }
+        } else {
+            $query->orderBy('id', 'asc'); // Default sort
+        }
+
         if ($request->has('per_page') || $request->has('page')) {
             $perPage = $request->get('per_page', 10);
             $page = $request->get('page', 1);
 
-            return Table::with('branch')->orderBy('id')->paginate($perPage, ['*'], 'page', $page);
+            return $query->paginate($perPage, ['*'], 'page', $page);
         }
 
-        return Table::with('branch')->orderBy('id')->get();
+        return $query->get();
     }
 
     /**

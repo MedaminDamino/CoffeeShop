@@ -33,12 +33,13 @@
           class="table-card"
           :class="{
             selected: selectedTableId === table.id,
-            reserved: isTableReserved(table) || table.status === 'reserved'
+            reserved: isTableReserved(table) || table.status === 'reserved',
+            'out-of-service': table.status === 'out_of_service'
           }"
           @click="selectTable(table)"
         >
           <div class="table-icon">
-            <i class="bi bi-circle-fill table-indicator" :class="{ reserved: isTableReserved(table) || table.status === 'reserved' }"></i>
+            <i class="bi bi-circle-fill table-indicator" :class="{ reserved: isTableReserved(table) || table.status === 'reserved', 'out-of-service': table.status === 'out_of_service' }"></i>
             <span class="table-number">{{ table.number }}</span>
           </div>
           <div class="table-info">
@@ -52,6 +53,10 @@
             <span v-if="isTableReserved(table) || table.status === 'reserved'" class="status-badge reserved">
               <i class="bi bi-lock-fill"></i>
               Reserved
+            </span>
+            <span v-else-if="table.status === 'out_of_service'" class="status-badge out-of-service">
+              <i class="bi bi-lock-fill"></i>
+              Out of Service
             </span>
             <span v-else class="status-badge available">
               <i class="bi bi-check-circle-fill"></i>
@@ -214,7 +219,7 @@ function isTableReserved(table: TableDTO): boolean {
  }
 
 function selectTable(table: TableDTO) {
-  if (isTableReserved(table) || table.status === 'reserved') return
+  if (isTableReserved(table) || table.status === 'reserved' || table.status === 'out_of_service') return
   selectedTableId.value = table.id
   showReservationModal.value = true
 }
@@ -410,7 +415,19 @@ async function submitReservation() {
   background: #f5f5f5;
 }
 
+.table-card.out-of-service {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f5f5f5;
+
+}
+
 .table-card.reserved:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.table-card.out-of-service:hover {
   transform: none;
   box-shadow: none;
 }
@@ -437,6 +454,10 @@ async function submitReservation() {
 
 .table-indicator.reserved {
   color: #f44336;
+}
+
+.table-indicator.out-of-service {
+  color: #ffc107;
 }
 
 .table-number {
@@ -494,6 +515,11 @@ async function submitReservation() {
 .status-badge.reserved {
   background: #f8d7da;
   color: #721c24;
+}
+
+.status-badge.out-of-service {
+  background: #fff3cd;
+  color: #856404;
 }
 
 .selection-indicator {

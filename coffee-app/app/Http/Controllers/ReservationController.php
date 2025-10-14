@@ -37,17 +37,41 @@ class ReservationController extends Controller
         foreach ($expiredReservations as $reservation) {
             $reservation->update(['res_status' => 'completed']);
             $reservation->table->update(['status' => 'available']);
-            \Log::info('Auto-completed expired reservation', ['reservation_id' => $reservation->id]);
+        }
+
+        $query = Reservation::with(['user','table.branch']);
+
+        // Handle sorting
+        if ($request->has('sort_by')) {
+            $sortBy = $request->get('sort_by');
+            $sortDirection = $request->get('sort_direction', 'asc');
+
+            // Map frontend column keys to database columns
+            $columnMapping = [
+                'id' => 'id',
+                'userId' => 'user_id',
+                'tableId' => 'table_id',
+                'startAt' => 'start_at',
+                'status' => 'res_status',
+            ];
+
+            if (array_key_exists($sortBy, $columnMapping)) {
+                $query->orderBy($columnMapping[$sortBy], $sortDirection);
+            } else {
+                $query->orderBy('id', 'asc'); // Default fallback
+            }
+        } else {
+            $query->orderBy('id', 'asc'); // Default sort
         }
 
         if ($request->has('per_page') || $request->has('page')) {
             $perPage = $request->get('per_page', 10);
             $page = $request->get('page', 1);
 
-            return Reservation::with(['user','table.branch'])->paginate($perPage, ['*'], 'page', $page);
+            return $query->paginate($perPage, ['*'], 'page', $page);
         }
 
-        return Reservation::with(['user','table.branch'])->get();
+        return $query->get();
     }
 
     /**
@@ -55,7 +79,6 @@ class ReservationController extends Controller
      */
     public function store(Request $request)
 {
-    \Log::info('Reservation creation attempt', ['request_data' => $request->all()]);
 
     try {
         $validated = $request->validate([
@@ -66,16 +89,13 @@ class ReservationController extends Controller
             'res_notes' => 'nullable|string',
         ]);
 
-        \Log::info('Validation passed', ['validated_data' => $validated]);
 
         $start = Carbon::parse($validated['start_at']);
         $end = $start->copy()->addHours(2); // fixed variable and added copy()
 
-        \Log::info('Parsed dates', ['start' => $start, 'end' => $end]);
 
         // Check if date is in the past
         if ($start->isPast()) {
-            \Log::info('Date is in the past', ['start' => $start]);
             return response()->json(['error' => 'Reservation date and time must be in the future. Please select a valid future date and time.'], 409);
         }
 
@@ -90,7 +110,6 @@ class ReservationController extends Controller
             ->exists();
 
         if ($existsUser) {
-            \Log::info('User already has reservation on this date', ['user_id' => $validated['user_id'], 'date' => $date]);
             return response()->json(['error' => 'You already have a reservation on this date'], 409);
         }
 
@@ -108,7 +127,6 @@ class ReservationController extends Controller
             ->exists();
 
         if ($overlap) {
-            \Log::info('Table overlap detected', ['table_id' => $validated['table_id'], 'start' => $start, 'end' => $end]);
             return response()->json(['error' => 'Table is already reserved during this time'], 409);
         }
 
@@ -116,13 +134,11 @@ class ReservationController extends Controller
         // Create reservation
         $reservation = Reservation::create($validated);
 
-        \Log::info('Reservation created', ['reservation_id' => $reservation->id]);
 
         // Only update table status to "reserved" if reservation is confirmed
         if ($validated['res_status'] === 'confirmed') {
             $table = Table::find($validated['table_id']);
             $table->update(['status' => 'reserved']);
-            \Log::info('Table status updated', ['table_id' => $table->id]);
         }
 
         return response()->json([
