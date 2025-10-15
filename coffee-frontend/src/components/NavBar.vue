@@ -25,7 +25,8 @@
             <router-link class="nav-link" to="/contact">Contact</router-link>
           </li>
         </ul>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+          
           <button v-if="isLoggedIn" class="btn btn-outline-primary btn-sm" @click="goToAdmin">
             Admin Panel
           </button>
@@ -35,6 +36,10 @@
           <button v-if="isLoggedIn" class="btn btn-outline-secondary btn-sm" @click="logout">
             Logout
           </button>
+          <router-link to="/checkout" class="cart-icon-link">
+            <i class="bi bi-cart-fill fs-5"></i>
+            <span v-if="cartItemCount > 0" class="cart-counter">{{ cartItemCount }}</span>
+          </router-link>
         </div>
       </div>
     </div>
@@ -45,11 +50,14 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 const isLoggedIn = computed(() => authStore.isAuthenticated)
+const cartItemCount = computed(() => cartStore.totalItems)
 
 const goToAdmin = () => {
   router.push('/admin')
@@ -108,5 +116,42 @@ const logout = async () => {
 
 .btn {
   border-radius: 0.375rem;
+}
+
+.cart-icon-link {
+  color: #4a4a4a !important;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  position: relative;
+  display: inline-block;
+}
+
+.cart-icon-link:hover {
+  color: #8C6353 !important;
+}
+
+.cart-icon-link .bi-cart-fill {
+  transition: transform 0.3s ease;
+}
+
+.cart-icon-link:hover .bi-cart-fill {
+  transform: scale(1.1);
+}
+
+.cart-counter {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #8C6353;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 2px solid #FFFFFF;
 }
 </style>

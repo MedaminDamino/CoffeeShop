@@ -20,9 +20,9 @@
           <span class="price-label">Price</span>
           <span class="product-price">${{ Number(product.price).toFixed(2) }}</span>
         </div>
-        <button class="add-to-cart-btn" aria-label="Add to cart">
-          <i class="bi bi-plus-lg"></i>
-        </button>
+        <button class="add-to-cart-btn" aria-label="Add to cart" @click="addToCart">
+           <i class="bi bi-plus-lg"></i>
+         </button>
       </div>
     </div>
   </div>
@@ -30,13 +30,81 @@
 
 <script setup lang="ts">
 import type { Product } from '@/interfaces/Product'
+import { useCartStore } from '@/stores/cart'
+import { useAuthStore } from '@/stores/auth'
 
-defineProps<{
+const props = defineProps<{
   product: Product
 }>()
+
+const cartStore = useCartStore()
+const authStore = useAuthStore()
+
+const addToCart = async () => {
+  try {
+    // Get user and branch info for backend sync
+    const userId = authStore.user?.id || 1 // Default to user ID 1 if not logged in
+    const branchId = 1 // TODO: Get from user selection or default
+
+    await cartStore.addToCart(props.product, userId, branchId)
+
+    // Show success feedback
+    showToast('Item added to cart!', 'success')
+  } catch (error) {
+    console.error('Failed to add item to cart:', error)
+    showToast('Failed to add item to cart. Please try again.', 'error')
+  }
+}
+
+const showToast = (message: string, type: 'success' | 'error') => {
+  // Simple toast implementation - could be replaced with a proper toast library
+  const toast = document.createElement('div')
+  toast.className = `toast toast-${type}`
+  toast.textContent = message
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+    background: ${type === 'success' ? '#27ae60' : '#e74c3c'};
+  `
+
+  document.body.appendChild(toast)
+
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease-in'
+    setTimeout(() => document.body.removeChild(toast), 300)
+  }, 3000)
+}
 </script>
 
 <style scoped>
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
 .product-card {
   background: #FFFFFF;
   border-radius: 20px;

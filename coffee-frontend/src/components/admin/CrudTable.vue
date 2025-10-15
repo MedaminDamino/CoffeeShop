@@ -372,7 +372,7 @@ async function submitEdit() {
           const messages = Object.values(errors).flat().join(', ')
           editErrorMessage.value = messages
         } else {
-          editErrorMessage.value = data?.message ?? 'Validation failed. Please check your input.'
+          editErrorMessage.value = data?.message ?? error.response.data?.error ?? 'Validation failed. Please check your input.'
         }
       } else if (error.response.status >= 500) {
         editErrorMessage.value = 'We encountered a technical issue while processing your request. Our team has been notified. Please try again in a few moments.'
@@ -454,26 +454,8 @@ async function confirmDelete() {
 
     <!-- Table Container -->
     <div class="table-container">
-      <!-- Loading State -->
-      <div v-if="loading" class="status-card loading">
-        <div class="spinner"></div>
-        <span>Loading data...</span>
-      </div>
-
-      <!-- Error State -->
-      <div v-else-if="error" class="status-card error">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        <div>
-          <p class="error-title">{{ error }}</p>
-          <button class="btn-retry" @click="reload">
-            <i class="bi bi-arrow-clockwise"></i>
-            Try Again
-          </button>
-        </div>
-      </div>
-
       <!-- Table -->
-      <div v-else class="table-wrapper">
+      <div class="table-wrapper">
         <table class="modern-table">
           <thead>
             <tr>
@@ -512,8 +494,46 @@ async function confirmDelete() {
               </th>
             </tr>
           </thead>
+
           <tbody>
-            <tr v-for="r in rows" :key="(r as any).id" class="table-row">
+
+            <!-- Loading State -->
+            <tr v-if="loading">
+              <td :colspan="columns.length + 1" >
+                <div class="status-card loading">
+                  <div class="spinner"></div>
+                  <span>Loading data...</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Error State -->
+            <tr v-else-if="error">
+              <td :colspan="columns.length + 1" class="status-cell">
+                <div class="status-card error">
+                  <i class="bi bi-exclamation-triangle-fill"></i>
+                  <div>
+                    <p class="error-title">{{ error }}</p>
+                    <button class="btn-retry" @click="reload">
+                      <i class="bi bi-arrow-clockwise"></i>
+                      Try Again
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Empty State -->
+            <tr v-else-if="!loading && !error && rows.length === 0">
+              <td :colspan="columns.length + 1" class="status-cell">
+                <div class="status-card empty">
+                  <i class="bi bi-inbox"></i>
+                  <span>No data available</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr v-else v-for="r in rows" :key="(r as any).id" class="table-row">
               <td v-for="c in columns" :key="c.key" v-html="getFormattedCellValue(r, c)"></td>
               <td class="actions-cell">
                 <slot name="actions" :row="r">
@@ -1110,6 +1130,11 @@ async function confirmDelete() {
   flex: 1;
 }
 
+.status-cell {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
 .status-card.loading {
   background: white;
   color: #1A2845;
@@ -1120,6 +1145,12 @@ async function confirmDelete() {
   background: #fff5f5;
   color: #c53030;
   border: 2px solid #feb2b2;
+}
+
+.status-card.empty {
+  background: white;
+  color: #666;
+  border: 2px solid #EEEAE4;
 }
 
 .status-card i {

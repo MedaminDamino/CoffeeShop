@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AuthController, UserController,
     BranchController, TableController, CategoryController, ProductController,
-    ReservationController, OrderController, OrderItemController,
+    ReservationController, OrderController,
     PromotionController, PromotionUsageController
 };
 
@@ -14,8 +14,6 @@ Route::apiResource('tables', TableController::class);
 Route::apiResource('categories', CategoryController::class);
 Route::apiResource('products', ProductController::class);
 Route::apiResource('reservations', ReservationController::class)->except(['update']);
-Route::apiResource('orders', OrderController::class);
-Route::apiResource('order-items', OrderItemController::class)->only(['store','destroy']);
 Route::apiResource('promotions', PromotionController::class);
 Route::apiResource('promotion-usages', PromotionUsageController::class)->only(['store']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -35,5 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/docs', function () {
         return response()->file(storage_path('api-docs/api-docs.json'));
     });
+
+    // Orders require authentication
+    Route::apiResource('orders', OrderController::class);
+    Route::post('/orders/add-item', [OrderController::class, 'addItem']);
 });
 ?>

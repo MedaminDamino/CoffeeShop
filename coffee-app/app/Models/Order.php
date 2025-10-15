@@ -14,11 +14,13 @@ class Order extends Model
         'ord_total_amount',
         'ord_status',
         'ord_payment_method',
+        'products',
         'meta',
     ];
 
     protected $casts = [
         'ord_total_amount' => 'decimal:2',
+        'products' => 'array',
         'meta' => 'array',
     ];
 
@@ -32,10 +34,6 @@ class Order extends Model
         return $this->belongsTo(Branch::class);
     }
 
-    public function items(): HasMany
-    {
-        return $this->hasMany(OrderItem::class);
-    }
 
     public function promotionUsages(): HasMany
     {
