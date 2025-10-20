@@ -7,6 +7,14 @@ interface Column<T = unknown> {
   formatter?: (value: T) => string
 }
 
+// Function to singularize table names
+function singularize(word: string): string {
+  if (word.endsWith('ies')) return word.slice(0, -3) + 'y'
+  if (word.endsWith('es')) return word.slice(0, -2)
+  if (word.endsWith('s')) return word.slice(0, -1)
+  return word
+}
+
 type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'checkbox' | 'datepicker' | 'datetime-local' | 'date' | 'time' | 'password'
 
 interface SelectOption {
@@ -91,6 +99,7 @@ const editErrorMessage = ref<string | null>(null)
 const showDeleteModal = ref(false)
 const deletingItem = ref<unknown>(null)
 const deleteSubmitting = ref(false)
+const deleteErrorMessage = ref<string | null>(null)
 
 // Computed property for dynamic table height
 const tableMinHeight = computed(() => {
@@ -268,7 +277,7 @@ async function submit() {
        }
      }
      await props.onCreate(form.value)
-     successMessage.value = `${props.title.slice(0, -1)} created successfully!`
+     successMessage.value = `Successfully added ${singularize(props.title)} to ${props.title}.`
      showModal.value = false
      resetForm()
      await reload()
@@ -311,9 +320,87 @@ function openEditModal(item: unknown) {
   const fields = props.editFields || props.createFields
 
   const base: Record<string, unknown> = {}
+  
+  // Check if we need to split a datetime field into separate date and time fields
+  let hasDateField = false
+  let hasTimeField = false
+  let dateFieldKey = ''
+  let timeFieldKey = ''
+  
   for (const field of fields) {
+    if (field.type === 'date') {
+      hasDateField = true
+      dateFieldKey = field.key
+    }
+    if (field.type === 'time') {
+      hasTimeField = true
+      timeFieldKey = field.key
+    }
+  }
+  
+  // If we have both date and time fields, look for a combined datetime field in the data
+  if (hasDateField && hasTimeField) {
+    // Try to find a datetime field that could be split (e.g., 'startAt' for 'startDate' and 'startTime')
+    const possibleDateTimeKeys = Object.keys(itemObj).filter(key => 
+      key.toLowerCase().includes('at') || 
+      key.toLowerCase().includes('datetime') ||
+      (dateFieldKey.replace('Date', '') && key.toLowerCase().includes(dateFieldKey.replace('Date', '').toLowerCase()))
+    )
+    
+    for (const dtKey of possibleDateTimeKeys) {
+      const dtValue = itemObj[dtKey]
+      if (dtValue && typeof dtValue === 'string') {
+        // Parse the datetime string
+        const dateTimePart = dtValue.split(' ')
+        const isoDateTimePart = dtValue.split('T')
+        
+        if (dateTimePart.length >= 2) {
+          // Format: "YYYY-MM-DD HH:MM:SS"
+          base[dateFieldKey] = dateTimePart[0]
+          const timePart = dateTimePart[1]?.split(':')
+          if (timePart && timePart.length >= 2) {
+            base[timeFieldKey] = `${timePart[0]}:${timePart[1]}`
+          }
+        } else if (isoDateTimePart.length >= 2) {
+          // Format: "YYYY-MM-DDTHH:MM:SS.000Z"
+          base[dateFieldKey] = isoDateTimePart[0]
+          const timePart = isoDateTimePart[1]?.split(':')
+          if (timePart && timePart.length >= 2) {
+            base[timeFieldKey] = `${timePart[0]}:${timePart[1]}`
+          }
+        }
+      }
+    }
+  }
+  
+  // Process all fields
+  for (const field of fields) {
+    // Skip if already populated from datetime splitting
+    if ((field.key === dateFieldKey || field.key === timeFieldKey) && base[field.key]) {
+      continue
+    }
+    
     if (itemObj[field.key] !== undefined) {
-      base[field.key] = itemObj[field.key]
+      // Convert datetime strings to date format for date inputs
+      if (field.type === 'date' && itemObj[field.key]) {
+        const dateValue = itemObj[field.key] as string
+        // Extract just the date part (YYYY-MM-DD) from datetime string
+        const datePart = dateValue.split(' ')[0]?.split('T')[0]
+        base[field.key] = datePart || dateValue
+      } else if (field.type === 'time' && itemObj[field.key]) {
+        const timeValue = itemObj[field.key] as string
+        // Extract time part (HH:MM) from datetime or time string
+        const timeParts = timeValue.split(' ')
+        const timeString = timeParts.length > 1 ? timeParts[1] : timeParts[0]
+        const timeComponents = timeString?.split(':')
+        if (timeComponents && timeComponents.length >= 2) {
+          base[field.key] = `${timeComponents[0]}:${timeComponents[1]}`
+        } else {
+          base[field.key] = timeValue
+        }
+      } else {
+        base[field.key] = itemObj[field.key]
+      }
     } else if (props.initialValues && field.key in props.initialValues) {
       base[field.key] = props.initialValues[field.key]
     } else {
@@ -353,7 +440,7 @@ async function submitEdit() {
      }
 
      await props.onUpdate(id, editForm.value)
-     successMessage.value = `${props.title.slice(0, -1)} updated successfully!`
+     successMessage.value = `Successfully updated ${singularize(props.title)} in ${props.title}.`
      closeEditModal()
      await reload()
      setTimeout(() => {
@@ -396,23 +483,40 @@ function openDeleteModal(item: unknown) {
 function closeDeleteModal() {
   showDeleteModal.value = false
   deletingItem.value = null
+  deleteErrorMessage.value = null
 }
 
 async function confirmDelete() {
   if (!deletingItem.value || !props.onDelete) return
 
   deleteSubmitting.value = true
+  deleteErrorMessage.value = null
 
   try {
     const itemObj = deletingItem.value as Record<string, unknown>
     const id = itemObj.id as number | string
 
     await props.onDelete(id)
+    successMessage.value = `Successfully deleted ${singularize(props.title)} from ${props.title}.`
     closeDeleteModal()
     await reload()
+    setTimeout(() => {
+      successMessage.value = null
+    }, 3000)
   } catch (error: unknown) {
     console.error(error)
-    // Handle error if needed
+    // Handle error if needed - show error message for category deletion
+    const errorObj = error as { response?: { status: number; data?: { message?: string } } }
+    if (errorObj.response?.status === 409) {
+      // Show error message for category deletion conflict
+      deleteErrorMessage.value = errorObj.response.data?.message || 'This category cannot be deleted because it contains products.'
+      // Show alert for 3 seconds
+      setTimeout(() => {
+        deleteErrorMessage.value = null
+      }, 3000)
+    } else {
+      alert('Failed to delete item. Please try again.')
+    }
   } finally {
     deleteSubmitting.value = false
   }
@@ -445,10 +549,15 @@ async function confirmDelete() {
     </div>
 
     <!-- Success Message -->
-    <transition name="fade">
-      <div v-if="successMessage" class="alert-message success">
-        <i class="bi bi-check-circle-fill"></i>
-        <span>{{ successMessage }}</span>
+    <transition name="slide-down">
+      <div v-if="successMessage" class="success-toast">
+        <div class="toast-content">
+          <i class="bi bi-check-circle-fill"></i>
+          <span>{{ successMessage }}</span>
+        </div>
+        <button class="toast-close" @click="successMessage = null">
+          <i class="bi bi-x"></i>
+        </button>
       </div>
     </transition>
 
@@ -646,7 +755,7 @@ async function confirmDelete() {
     <!-- Modal -->
     <teleport to="body">
       <transition name="modal">
-        <div v-if="showModal" class="modal-overlay" @click="showModal = false">
+        <div v-if="showModal" class="modal-overlay">
           <div class="modern-modal" @click.stop>
             <button class="modal-close" @click="showModal = false">
               <i class="bi bi-x-lg"></i>
@@ -819,7 +928,7 @@ async function confirmDelete() {
     <!-- Edit Modal -->
     <teleport to="body" v-if="enableEdit">
       <transition name="modal">
-        <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+        <div v-if="showEditModal" class="modal-overlay">
           <div class="modern-modal" @click.stop>
             <button class="modal-close" @click="closeEditModal">
               <i class="bi bi-x-lg"></i>
@@ -971,7 +1080,7 @@ async function confirmDelete() {
     <!-- Delete Modal -->
     <teleport to="body" v-if="enableDelete">
       <transition name="modal">
-        <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
+        <div v-if="showDeleteModal" class="modal-overlay">
           <div class="modern-modal" @click.stop>
             <button class="modal-close" @click="closeDeleteModal">
               <i class="bi bi-x-lg"></i>
@@ -985,6 +1094,16 @@ async function confirmDelete() {
             </div>
 
             <div class="modal-body">
+              <!-- Error Message -->
+              <transition name="fade">
+                <div v-if="deleteErrorMessage" class="error-message">
+                  <i class="bi bi-exclamation-circle-fill"></i>
+                  <div class="error-content">
+                    <p>{{ deleteErrorMessage }}</p>
+                  </div>
+                </div>
+              </transition>
+
               <div class="delete-confirmation">
                 <p>{{ deleteMessage ?? `Are you sure you want to delete this ${title.toLowerCase()}?` }}</p>
               </div>
@@ -1785,6 +1904,66 @@ async function confirmDelete() {
   animation: spin 0.6s linear infinite;
 }
 
+/* Success Toast */
+.success-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+  z-index: 1050;
+  min-width: 350px;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.toast-content i {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.toast-content span {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.toast-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.toast-close i {
+  font-size: 1rem;
+}
+
 /* Transitions */
 .modal-enter-active,
 .modal-leave-active {
@@ -1810,6 +1989,17 @@ async function confirmDelete() {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-100%) scale(0.9);
 }
 
 /* Pagination */

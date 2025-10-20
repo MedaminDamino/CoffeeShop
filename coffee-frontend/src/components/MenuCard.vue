@@ -32,6 +32,7 @@
 import type { Product } from '@/interfaces/Product'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
+import { Modal } from 'bootstrap'
 
 const props = defineProps<{
   product: Product
@@ -40,20 +41,23 @@ const props = defineProps<{
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 
-const addToCart = async () => {
-  try {
-    // Get user and branch info for backend sync
-    const userId = authStore.user?.id || 1 // Default to user ID 1 if not logged in
-    const branchId = 1 // TODO: Get from user selection or default
-
-    await cartStore.addToCart(props.product, userId, branchId)
-
-    // Show success feedback
-    showToast('Item added to cart!', 'success')
-  } catch (error) {
-    console.error('Failed to add item to cart:', error)
-    showToast('Failed to add item to cart. Please try again.', 'error')
+const addToCart = () => {
+  // Check if user is authenticated
+  if (!authStore.isAuthenticated) {
+    // Show login modal if not authenticated
+    const modal = new Modal(document.getElementById('authModal')!)
+    modal.show()
+    return
   }
+
+  // Get user and branch info for backend sync
+  const userId = authStore.user?.id || 1 // Default to user ID 1 if not logged in
+  const branchId = 1 // TODO: Get from user selection or default
+
+  cartStore.addToCart(props.product, userId, branchId)
+
+  // Show success feedback (cart is always added locally now)
+  showToast('Item added to cart!', 'success')
 }
 
 const showToast = (message: string, type: 'success' | 'error') => {

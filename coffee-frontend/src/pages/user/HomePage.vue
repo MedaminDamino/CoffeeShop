@@ -28,12 +28,12 @@
               </div>
             </div>
           </div>
-          <div class="col-lg-6 d-none d-lg-block">
+          <div class="col-lg-6 d-md-block mt-3">
             <div class="hero-image-container">
               <img src="/img1.jpg" alt="Premium Coffee" class="img-fluid rounded-4 shadow-lg" />
             </div>
           </div>
-        </div>
+        </div>  
       </div>
     </section>
 
@@ -191,6 +191,8 @@ const sendFeedback = async () => {
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600;700&display=swap');
 
 .coffee-homepage {
+
+  
   font-family: 'Inter', sans-serif;
   background-color: #faf8f5;
 }
@@ -289,6 +291,7 @@ const sendFeedback = async () => {
 
 .cta-card .text-muted {
   color: #EEEAE4  !important;
+  justify-content: center;
 }
 
 .cta-card .form-control {
@@ -317,6 +320,16 @@ const sendFeedback = async () => {
 
   .hero-section {
     padding-top: 80px;
+  }
+
+  .hero-image-container {
+    margin-top: 2rem;
+    text-align: center;
+  }
+
+  .hero-image-container img {
+    max-width: 100%;
+    height: auto;
   }
 }
 </style>

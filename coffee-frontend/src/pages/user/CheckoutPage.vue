@@ -4,15 +4,26 @@ import NavBar from '@/components/NavBar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
+import { validatePromotion } from '@/api/promotions'
+import type { PromotionDTO } from '@/api/promotions'
 
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 
 const subtotal = computed(() => cartStore.totalPrice)
 const promoCode = ref('')
-const discount = computed(() =>
-  promoCode.value.toUpperCase() === 'WELCOME10' ? subtotal.value * 0.1 : 0,
-)
+const appliedPromotion = ref<PromotionDTO | null>(null)
+const errorMessage = ref<string | null>(null)
+const successMessage = ref<string | null>(null)
+const discount = computed(() => {
+  if (!appliedPromotion.value) return 0
+  const promo = appliedPromotion.value
+  if (promo.discountType === 'percent') {
+    return subtotal.value * (promo.discountValue / 100)
+  } else {
+    return Math.min(promo.discountValue, subtotal.value)
+  }
+})
 const total = computed(() => Math.max(0, subtotal.value - discount.value))
 
 function updateQty(productId: number, change: number) {
@@ -25,6 +36,56 @@ function updateQty(productId: number, change: number) {
 
 function removeItem(productId: number) {
   cartStore.removeFromCart(productId)
+}
+
+async function applyPromoCode() {
+  if (!promoCode.value.trim()) {
+    errorMessage.value = 'Please enter a promo code'
+    setTimeout(() => {
+      errorMessage.value = null
+    }, 3000)
+    return
+  }
+  console.log("Sending promo code to validate:", promoCode.value.trim())
+  console.log("Current appliedPromotion.value:", appliedPromotion.value)
+  try {
+    const promotion = await validatePromotion(promoCode.value.trim())
+    appliedPromotion.value = promotion
+    console.log("Applied promotion:", appliedPromotion.value)
+    successMessage.value = 'Promo code applied successfully!'
+    setTimeout(() => {
+      successMessage.value = null
+    }, 3000)
+  } catch (error) {
+    appliedPromotion.value = null
+    console.error('Promo code validation error:', error)
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { status?: number; data?: { message?: string; errors?: Record<string, string[]> } } }
+      if (axiosError.response?.status === 422) {
+        if (axiosError.response.data?.message) {
+          errorMessage.value = axiosError.response.data.message
+          setTimeout(() => {
+            errorMessage.value = null
+          }, 3000)
+          return
+        }
+        if (axiosError.response.data?.errors) {
+          const firstError = Object.values(axiosError.response.data.errors)[0]
+          if (Array.isArray(firstError) && firstError.length > 0) {
+            errorMessage.value = firstError[0] || 'Validation error'
+            setTimeout(() => {
+              errorMessage.value = null
+            }, 3000)
+            return
+          }
+        }
+      }
+    }
+    errorMessage.value = 'Invalid promo code'
+    setTimeout(() => {
+      errorMessage.value = null
+    }, 3000)
+  }
 }
 
 async function pay(type: 'counter' | 'online') {
@@ -48,7 +109,12 @@ async function pay(type: 'counter' | 'online') {
         product_id: item.product.id,
         quantity: item.quantity,
         price: item.product.price
-      }))
+      })),
+      meta: appliedPromotion.value ? {
+        promotion_id: appliedPromotion.value.id,
+        discount_amount: discount.value,
+        original_total: subtotal.value
+      } : undefined
     }
 
     // Create the order
@@ -70,7 +136,7 @@ async function pay(type: 'counter' | 'online') {
   <div class="cart-page">
     <div class="container">
       <div class="page-header">
-        <h1 class="page-title">Your Cart</h1>
+        <h1 class="page-title">Your Order</h1>
         <p class="page-subtitle">Review your items before checkout</p>
       </div>
 
@@ -153,7 +219,7 @@ async function pay(type: 'counter' | 'online') {
                   class="promo-input" 
                   placeholder="Enter code"
                 />
-                <button class="btn-apply" type="button">Apply</button>
+                <button class="btn-apply" type="button" @click="applyPromoCode">Apply</button>
               </div>
               <small class="promo-hint">Try WELCOME10 for 10% off</small>
             </div>
@@ -163,7 +229,7 @@ async function pay(type: 'counter' | 'online') {
                 <i class="bi bi-shop"></i>
                 <span>Pay at Counter</span>
               </button>
-              <button class="btn-payment btn-online" @click="pay('online')">
+              <button class="btn-payment btn-online" @click="$router.push('/checkout/online')">
                 <i class="bi bi-credit-card"></i>
                 <span>Pay Online</span>
               </button>
@@ -173,6 +239,33 @@ async function pay(type: 'counter' | 'online') {
       </div>
     </div>
   </div>
+
+  <!-- Success Message -->
+  <transition name="slide-down">
+    <div v-if="successMessage" class="success-toast">
+      <div class="toast-content">
+        <i class="bi bi-check-circle-fill"></i>
+        <span>{{ successMessage }}</span>
+      </div>
+      <button class="toast-close" @click="successMessage = null">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+  </transition>
+
+  <!-- Error Toast -->
+  <transition name="slide-down">
+    <div v-if="errorMessage" class="error-toast">
+      <div class="toast-content">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>{{ errorMessage }}</span>
+      </div>
+      <button class="toast-close" @click="errorMessage = null">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+  </transition>
+
   <AppFooter />
 </template>
 
@@ -550,12 +643,104 @@ async function pay(type: 'counter' | 'online') {
   font-size: 1.2rem;
 }
 
+/* Success Toast */
+.success-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+  z-index: 1050;
+  min-width: 350px;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.toast-content i {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.toast-content span {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.toast-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.toast-close i {
+  font-size: 1rem;
+}
+
+/* Error Toast */
+.error-toast {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(220, 53, 69, 0.3);
+  z-index: 1050;
+  min-width: 350px;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Transitions */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-100%) scale(0.9);
+}
+
 /* Responsive */
 @media (max-width: 991px) {
   .summary-card {
     position: static;
   }
-  
+
   .page-title {
     font-size: 2rem;
   }
@@ -565,22 +750,22 @@ async function pay(type: 'counter' | 'online') {
   .cart-page {
     padding: 100px 0 40px;
   }
-  
+
   .cart-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-  
+
   .item-actions {
     width: 100%;
     justify-content: space-between;
   }
-  
+
   .cart-items-container {
     padding: 1.5rem;
   }
-  
+
   .summary-card {
     padding: 1.5rem;
   }

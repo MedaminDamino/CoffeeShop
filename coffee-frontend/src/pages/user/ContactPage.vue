@@ -132,20 +132,28 @@
       </div>
     </div>
 
+
     <!-- Map Section -->
-    <div class="map-section">
-      <div class="container-fluid p-0">
-        <div class="map-placeholder">
-          <div class="map-overlay">
-            <div class="map-info">
-              <i class="bi bi-geo-alt-fill"></i>
-              <h4>Find Us Here</h4>
-              <p>Avenue Habib Bourguiba, Tunis 1000, Tunisia</p>
-            </div>
-          </div>
-        </div>
-      </div>
+<section class="map-section">
+  <div class="container-fluid p-0">
+    <div class="map-container">
+      <iframe
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3237.478592247938!2d10.18020607565501!3d36.80649597134437!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x12fd34c6248c3fcb%3A0x2eae86b7e09f50cf!2sAvenue%20Habib%20Bourguiba%2C%20Tunis%201000%2C%20Tunisia!5e0!3m2!1sen!2stn!4v1715789073821!5m2!1sen!2stn"
+        width="100%"
+        height="500"
+        style="border: 0"
+        :allowfullscreen="true"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Rachfa Coffee Location"
+      ></iframe>
     </div>
+  </div>
+</section>
+
+
+
+
 
     <AppFooter />
   </div>
@@ -562,6 +570,17 @@ textarea.form-control {
 }
 
 /* Map Section */
+
+.map-section {
+  width: 100%;
+  overflow: hidden;
+}
+
+.map-placeholder iframe {
+  display: block;
+}
+
+
 .map-section {
   margin-top: 100px;
 }

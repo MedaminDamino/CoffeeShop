@@ -13,7 +13,6 @@ export const useProductStore = defineStore('products', () => {
     error.value = null
     try {
       const data = await getProducts()
-      console.log('Fetched products from API:', data)
       // Note: Backend now handles filtering based on user role, so no client-side filtering needed
       products.value = Array.isArray(data) ? data : data.data || []
     } catch (err) {

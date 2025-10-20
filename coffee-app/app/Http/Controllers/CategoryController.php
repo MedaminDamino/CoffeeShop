@@ -185,11 +185,22 @@ class CategoryController extends Controller
      *     @OA\Response(
      *         response=404,
      *         description="Category not found"
+     *     ),
+     *     @OA\Response(
+     *         response=409,
+     *         description="Category cannot be deleted because it contains products"
      *     )
      * )
      */
     public function destroy(Category $category)
     {
+        // Check if category has any products
+        if ($category->products()->exists()) {
+            return response()->json([
+                'message' => 'This category cannot be deleted because it contains products.'
+            ], 409);
+        }
+
         $category->delete();
         return response()->noContent();
     }

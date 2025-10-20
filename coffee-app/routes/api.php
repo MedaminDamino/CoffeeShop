@@ -6,7 +6,8 @@ use App\Http\Controllers\{
     AuthController, UserController,
     BranchController, TableController, CategoryController, ProductController,
     ReservationController, OrderController,
-    PromotionController, PromotionUsageController
+    PromotionController, PromotionUsageController,
+    VerificationController
 };
 
 Route::apiResource('branches', BranchController::class);
@@ -15,12 +16,19 @@ Route::apiResource('categories', CategoryController::class);
 Route::apiResource('products', ProductController::class);
 Route::apiResource('reservations', ReservationController::class)->except(['update']);
 Route::apiResource('promotions', PromotionController::class);
+Route::post('/promotions/validate', [PromotionController::class, 'validateCode']);
 Route::apiResource('promotion-usages', PromotionUsageController::class)->only(['store']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:3,10');
 Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
 Route::post('/email/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:3,10');
+
+// Email Verification Routes
+Route::prefix('verification')->group(function () {
+    Route::post('/send-code', [VerificationController::class, 'sendCode']);
+    Route::post('/verify-code', [VerificationController::class, 'verifyCode']);
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {

@@ -23,50 +23,99 @@
       </div>
     </transition>
 
+    <!-- Branch Selection -->
+<div class="branch-selection-wrapper">
+  <div class="branch-selection-container">
+    <div class="selection-header">
+      <div class="icon-wrapper">
+        <i class="bi bi-building"></i>
+      </div>
+      <h2 class="section-title">Select Your Branch</h2>
+      <p class="section-subtitle">Choose a location to view available tables</p>
+    </div>
+    
+    <div class="branch-selector">
+      <select
+        v-model="selectedBranchId"
+        class="branch-select"
+        @change="onBranchChange"
+      >
+        <option value="" disabled>Choose a branch...</option>
+        <option
+          v-for="branch in branches"
+          :key="branch.id"
+          :value="branch.id"
+        >
+          {{ branch.name }}
+        </option>
+      </select>
+      <div class="select-icon-wrapper">
+        <i class="bi bi-chevron-down select-icon"></i>
+      </div>
+    </div>
+
+    <!-- Optional: Selected branch indicator -->
+    <div v-if="showBranchIndicator" class="selected-indicator">
+      <i class="bi bi-check-circle-fill"></i>
+      <span>Branch selected</span>
+    </div>
+  </div>
+</div>
+
     <!-- Tables Grid -->
     <div class="tables-section">
       <h2 class="section-title">Available Tables</h2>
-      <div class="tables-grid">
-        <div
-          v-for="table in tables"
-          :key="table.id"
-          class="table-card"
-          :class="{
-            selected: selectedTableId === table.id,
-            reserved: isTableReserved(table) || table.status === 'reserved',
-            'out-of-service': table.status === 'out_of_service'
-          }"
-          @click="selectTable(table)"
-        >
-          <div class="table-icon">
-            <i class="bi bi-circle-fill table-indicator" :class="{ reserved: isTableReserved(table) || table.status === 'reserved', 'out-of-service': table.status === 'out_of_service' }"></i>
-            <span class="table-number">{{ table.number }}</span>
-          </div>
-          <div class="table-info">
-            <h3 class="table-name">Table {{ table.number }}</h3>
-            <p class="table-capacity">
-              <i class="bi bi-people-fill"></i>
-              {{ table.capacity }} seats
-            </p>
-          </div>
-          <div class="table-status">
-            <span v-if="isTableReserved(table) || table.status === 'reserved'" class="status-badge reserved">
-              <i class="bi bi-lock-fill"></i>
-              Reserved
-            </span>
-            <span v-else-if="table.status === 'out_of_service'" class="status-badge out-of-service">
-              <i class="bi bi-lock-fill"></i>
-              Out of Service
-            </span>
-            <span v-else class="status-badge available">
-              <i class="bi bi-check-circle-fill"></i>
-              Available
-            </span>
-          </div>
-          <div class="selection-indicator">
-            <i class="bi bi-check-lg"></i>
+      <div v-if="selectedBranchId" class="tables-content">
+        <div class="tables-grid" v-if="filteredTables.length > 0">
+          <div
+            v-for="table in filteredTables"
+            :key="table.id"
+            class="table-card"
+            :class="{
+              selected: selectedTableId === table.id,
+              reserved: isTableReserved(table) || table.status === 'reserved',
+              'out-of-service': table.status === 'out_of_service'
+            }"
+            @click="selectTable(table)"
+          >
+            <div class="table-icon">
+              <i class="bi bi-circle-fill table-indicator" :class="{ reserved: isTableReserved(table) || table.status === 'reserved', 'out-of-service': table.status === 'out_of_service' }"></i>
+              <span class="table-number">{{ table.number }}</span>
+            </div>
+            <div class="table-info">
+              <h3 class="table-name">Table {{ table.number }}</h3>
+              <p class="table-capacity">
+                <i class="bi bi-people-fill"></i>
+                {{ table.capacity }} seats
+              </p>
+            </div>
+            <div class="table-status">
+              <span v-if="isTableReserved(table) || table.status === 'reserved'" class="status-badge reserved">
+                <i class="bi bi-lock-fill"></i>
+                Reserved
+              </span>
+              <span v-else-if="table.status === 'out_of_service'" class="status-badge out-of-service">
+                <i class="bi bi-lock-fill"></i>
+                Out of Service
+              </span>
+              <span v-else class="status-badge available">
+                <i class="bi bi-check-circle-fill"></i>
+                Available
+              </span>
+            </div>
+            <div class="selection-indicator">
+              <i class="bi bi-check-lg"></i>
+            </div>
           </div>
         </div>
+        <div v-else class="no-tables-message">
+          <i class="bi bi-info-circle"></i>
+          <p>No tables available at this branch.</p>
+        </div>
+      </div>
+      <div v-else class="no-branch-message">
+        <i class="bi bi-info-circle"></i>
+        <p>Please select a branch to view available tables.</p>
       </div>
     </div>
   </div>
@@ -167,6 +216,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { getTables, type TableDTO } from '@/api/tables'
 import { getReservations, createReservation, type ReservationDTO } from '@/api/reservations'
+import { getBranches, type BranchDTO } from '@/api/branches'
 import NavBar from '@/components/NavBar.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -178,18 +228,28 @@ const time = ref('')
 const guests = ref(2)
 const tables = ref<TableDTO[]>([])
 const reservations = ref<ReservationDTO[]>([])
+const branches = ref<BranchDTO[]>([])
+const selectedBranchId = ref<number | null>(null)
 const selectedTableId = ref<number | null>(null)
 const showReservationModal = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
+const showBranchIndicator = ref(false)
 
-const selectedTable = computed(() => 
+const selectedTable = computed(() =>
   tables.value.find(t => t.id === selectedTableId.value)
+)
+
+const filteredTables = computed(() =>
+  selectedBranchId.value
+    ? tables.value.filter(table => table.branchId === selectedBranchId.value)
+    : []
 )
 
 onMounted(async () => {
   try {
     tables.value = await getTables()
+    branches.value = await getBranches()
     reservations.value = await getReservations()
 
     // Set up real-time updates every 30 seconds
@@ -204,6 +264,7 @@ onMounted(async () => {
   } catch (error) {
     console.error(error)
     tables.value = []
+    branches.value = []
     reservations.value = []
   }
 })
@@ -217,6 +278,14 @@ function isTableReserved(table: TableDTO): boolean {
      new Date(res.startAt).getTime() + 2 * 60 * 60 * 1000 > now.getTime()
    )
  }
+
+function onBranchChange() {
+  selectedTableId.value = null
+  showBranchIndicator.value = true
+  setTimeout(() => {
+    showBranchIndicator.value = false
+  }, 2000)
+}
 
 function selectTable(table: TableDTO) {
   if (isTableReserved(table) || table.status === 'reserved' || table.status === 'out_of_service') return
@@ -350,6 +419,223 @@ async function submitReservation() {
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* Branch Selection */
+/* Branch Selection Wrapper - Centers content */
+.branch-selection-wrapper {
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  margin-bottom: 3rem;
+}
+
+.branch-selection-container {
+  width: 100%;
+  max-width: 500px;
+  background: white;
+  border-radius: 20px;
+  padding: 3rem 2.5rem;
+  box-shadow: 
+    0 4px 6px rgba(26, 40, 69, 0.05),
+    0 10px 20px rgba(26, 40, 69, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.branch-selection-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 12px rgba(26, 40, 69, 0.08),
+    0 15px 30px rgba(26, 40, 69, 0.12);
+}
+
+/* Header Section */
+.selection-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.icon-wrapper {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #E7D7C9 0%, #EEEAE4 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.icon-wrapper i {
+  font-size: 1.75rem;
+  color: #8C6353;
+}
+
+.branch-selection-container:hover .icon-wrapper {
+  transform: scale(1.05);
+}
+
+.section-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1A2845;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.section-subtitle {
+  font-size: 0.95rem;
+  color: #8C6353;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Branch Selector */
+.branch-selector {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.branch-select {
+  width: 100%;
+  padding: 1.25rem 3.5rem 1.25rem 1.25rem;
+  border: 2px solid #EEEAE4;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  background: #FEFEFE;
+  color: #1A2845;
+  cursor: pointer;
+  appearance: none;
+  transition: all 0.3s ease;
+  outline: none;
+  font-weight: 500;
+}
+
+.branch-select:hover {
+  border-color: #E7D7C9;
+  background: white;
+}
+
+.branch-select:focus {
+  border-color: #8C6353;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(140, 99, 83, 0.12);
+}
+
+.branch-select option {
+  padding: 1rem;
+  font-weight: 500;
+}
+
+.branch-select option:disabled {
+  color: #8C6353;
+  opacity: 0.7;
+}
+
+/* Select Icon */
+.select-icon-wrapper {
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  width: 32px;
+  height: 32px;
+  background: #EEEAE4;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.branch-select:focus ~ .select-icon-wrapper {
+  background: #8C6353;
+}
+
+.select-icon {
+  color: #8C6353;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.branch-select:focus ~ .select-icon-wrapper .select-icon {
+  color: white;
+  transform: translateY(2px);
+}
+
+/* Selected Indicator */
+.selected-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #E7D7C9 0%, #EEEAE4 100%);
+  border-radius: 10px;
+  color: #8C6353;
+  font-size: 0.9rem;
+  font-weight: 600;
+  animation: slideIn 0.4s ease;
+}
+
+.selected-indicator i {
+  font-size: 1rem;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .branch-selection-wrapper {
+    padding: 1.5rem;
+    min-height: 40vh;
+  }
+
+  .branch-selection-container {
+    padding: 2rem 1.5rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .icon-wrapper {
+    width: 56px;
+    height: 56px;
+  }
+
+  .icon-wrapper i {
+    font-size: 1.5rem;
+  }
+
+  .branch-select {
+    padding: 1.1rem 3rem 1.1rem 1.1rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-title {
+    font-size: 1.35rem;
+  }
+
+  .section-subtitle {
+    font-size: 0.9rem;
+  }
 }
 
 /* Tables Section */
@@ -542,6 +828,32 @@ async function submitReservation() {
 .table-card.selected .selection-indicator {
   opacity: 1;
   transform: scale(1);
+}
+
+/* No Tables/Branch Messages */
+.no-tables-message,
+.no-branch-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: #8C6353;
+}
+
+.no-tables-message i,
+.no-branch-message i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+.no-tables-message p,
+.no-branch-message p {
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 500;
 }
 
 /* Modal */

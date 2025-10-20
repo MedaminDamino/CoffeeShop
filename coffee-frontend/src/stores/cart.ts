@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 import type { Product } from '@/interfaces/Product'
 
@@ -7,8 +7,30 @@ export interface CartItem {
   quantity: number
 }
 
+const CART_STORAGE_KEY = 'coffee-cart'
+
 export const useCartStore = defineStore('cart', () => {
-  const items = ref<CartItem[]>([])
+  // Load cart from localStorage on initialization
+  const loadCart = (): CartItem[] => {
+    try {
+      const stored = localStorage.getItem(CART_STORAGE_KEY)
+      return stored ? JSON.parse(stored) : []
+    } catch (error) {
+      console.error('Failed to load cart from localStorage:', error)
+      return []
+    }
+  }
+
+  // Save cart to localStorage
+  const saveCart = (cartItems: CartItem[]) => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems))
+    } catch (error) {
+      console.error('Failed to save cart to localStorage:', error)
+    }
+  }
+
+  const items = ref<CartItem[]>(loadCart())
 
   const totalItems = computed(() => {
     return items.value.reduce((sum, item) => sum + item.quantity, 0)
@@ -18,7 +40,7 @@ export const useCartStore = defineStore('cart', () => {
     return items.value.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
   })
 
-  async function addToCart(product: Product, userId?: number, branchId?: number) {
+  function addToCart(product: Product, userId?: number, branchId?: number) {
     // Update local cart immediately for UI responsiveness
     const existingItem = items.value.find(item => item.product.id === product.id)
     if (existingItem) {
@@ -27,26 +49,20 @@ export const useCartStore = defineStore('cart', () => {
       items.value.push({ product, quantity: 1 })
     }
 
-    // If user is authenticated, sync with backend
+    // If user is authenticated, sync with backend (don't revert on failure)
     if (userId && branchId) {
-      try {
-        const { addItemToOrder } = await import('@/api/orders')
-        await addItemToOrder({
+      // Fire and forget - don't await to avoid blocking UI
+      import('@/api/orders').then(({ addItemToOrder }) => {
+        addItemToOrder({
           userId,
           branchId,
           productId: product.id,
           quantity: 1,
+        }).catch(error => {
+          console.error('Failed to sync cart with backend:', error)
+          // Don't revert local cart - localStorage persistence takes precedence
         })
-      } catch (error) {
-        console.error('Failed to sync cart with backend:', error)
-        // Revert local change on failure
-        if (existingItem) {
-          existingItem.quantity--
-        } else {
-          items.value.pop()
-        }
-        throw error
-      }
+      })
     }
   }
 
@@ -71,6 +87,11 @@ export const useCartStore = defineStore('cart', () => {
   function clearCart() {
     items.value = []
   }
+
+  // Watch for changes and persist to localStorage
+  watch(items, (newItems) => {
+    saveCart(newItems)
+  }, { deep: true })
 
   return {
     items,

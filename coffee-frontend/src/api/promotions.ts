@@ -41,6 +41,7 @@ export function getPromotions(params?: { page?: number; per_page?: number }) {
           endDate: promotion.promo_end_date,
           usageLimit: promotion.promo_usage_limit,
           isActive: promotion.promo_is_active
+
         }))
       };
     } else {
@@ -54,7 +55,8 @@ export function getPromotions(params?: { page?: number; per_page?: number }) {
         startDate: promotion.promo_start_date,
         endDate: promotion.promo_end_date,
         usageLimit: promotion.promo_usage_limit,
-        isActive: promotion.promo_is_active
+        isActive: promotion.promo_is_active,
+
       }));
     }
   });
@@ -80,7 +82,7 @@ export function createPromotion(data: Pick<PromotionDTO, 'code' | 'description' 
       startDate: r.data.promo_start_date,
       endDate: r.data.promo_end_date,
       usageLimit: r.data.promo_usage_limit,
-      isActive: r.data.promo_is_active
+      isActive: r.data.promo_is_active,
     }))
 }
 export function updatePromotion(id: number, data: Partial<Pick<PromotionDTO, 'code' | 'description' | 'discountType' | 'discountValue' | 'startDate' | 'endDate' | 'usageLimit' | 'isActive'>>) {
@@ -104,7 +106,8 @@ export function updatePromotion(id: number, data: Partial<Pick<PromotionDTO, 'co
       startDate: r.data.promo_start_date,
       endDate: r.data.promo_end_date,
       usageLimit: r.data.promo_usage_limit,
-      isActive: r.data.promo_is_active
+      isActive: r.data.promo_is_active,
+ 
     }))
 }
 export function deletePromotion(id: number) {
@@ -113,4 +116,12 @@ export function deletePromotion(id: number) {
 
 export function usePromotion(code: string) {
   return api.post('/promotion-usages', { code }).then((r) => r.data)
+}
+
+export function validatePromotion(code: string) {
+  console.log("Frontend: Sending request to /promotions/validate with payload:", { code_promo: code })
+  return api.post('/promotions/validate', { code_promo: code }).then((r) => {
+    console.log("Frontend: Received response from backend:", r.data)
+    return r.data
+  })
 }

@@ -29,14 +29,41 @@ class OrderController extends Controller
      */
     public function index(Request $request)
     {
+        $query = Order::with(['user']);
+
+        // Handle sorting
+        $sortBy = $request->get('sort_by');
+        $sortDirection = $request->get('sort_direction', 'asc');
+
+        if ($sortBy) {
+            // Map frontend column names to database column names
+            $columnMapping = [
+                'id' => 'id',
+                'userId' => 'user_id',
+                'totalAmount' => 'ord_total_amount',
+                'status' => 'ord_status',
+                'created_at' => 'created_at',
+            ];
+
+            if (array_key_exists($sortBy, $columnMapping)) {
+                $query->orderBy($columnMapping[$sortBy], $sortDirection);
+            } else {
+                // Default sort by id if invalid column
+                $query->orderBy('id', 'asc');
+            }
+        } else {
+            // Default sort by id ascending
+            $query->orderBy('id', 'asc');
+        }
+
         if ($request->has('per_page') || $request->has('page')) {
             $perPage = $request->get('per_page', 10);
             $page = $request->get('page', 1);
 
-            return Order::with(['user'])->orderBy('id')->paginate($perPage, ['*'], 'page', $page);
+            return $query->paginate($perPage, ['*'], 'page', $page);
         }
 
-        return Order::with(['user'])->orderBy('id')->get();
+        return $query->get();
     }
 
     /**
@@ -55,11 +82,21 @@ class OrderController extends Controller
             'products.*.quantity' => 'required|integer|min:1',
             'products.*.price' => 'required|numeric|min:0',
             'meta' => 'nullable|array',
+            'meta.promotion_id' => 'nullable|exists:promotions,id',
         ]);
 
         $validated['ord_status'] = $validated['ord_status'] ?? 'pending';
 
         $order = Order::create($validated);
+
+        // If promotion was applied, create promotion usage record
+        if (isset($validated['meta']['promotion_id'])) {
+            \App\Models\PromotionUsage::create([
+                'promotion_id' => $validated['meta']['promotion_id'],
+                'order_id' => $order->id,
+                'user_id' => $validated['user_id'],
+            ]);
+        }
 
         return $order->load(['user']);
     }

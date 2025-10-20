@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import CrudTable from '@/components/admin/CrudTable.vue'
 import { getPromotions, createPromotion, updatePromotion, deletePromotion, type PromotionDTO } from '@/api/promotions'
+
+function formatDate(value: string | unknown) {
+  if (!value) return 'N/A'
+  const date = new Date(value as string)
+  if (isNaN(date.getTime())) return 'Invalid Date'
+  return date.toLocaleDateString('en-GB') // en-GB gives DD/MM/YYYY
+}
 </script>
 
 <template>
@@ -10,7 +17,12 @@ import { getPromotions, createPromotion, updatePromotion, deletePromotion, type 
       { key: 'id', label: 'ID' },
       { key: 'code', label: 'Code' },
       { key: 'discountValue', label: 'Discount Value' },
-      { key: 'discountType', label: 'Type' },
+      { key: 'startDate',
+        label: 'Start Date',
+        formatter: (value) => formatDate(value as string)},
+      { key: 'endDate',
+        label: 'End Date',
+        formatter: (value) => formatDate(value as string)},
       { key: 'isActive', label: 'Active' },
     ]"
     :fetchAll="getPromotions"
@@ -19,8 +31,8 @@ import { getPromotions, createPromotion, updatePromotion, deletePromotion, type 
       { key: 'description', label: 'Description', type: 'textarea' },
       { key: 'discountType', label: 'Discount Type', type: 'select', required: true, options: [{ label: 'Percent', value: 'percent' }, { label: 'Fixed', value: 'fixed' }] },
       { key: 'discountValue', label: 'Discount Value', type: 'number', required: true, min: 0, step: 0.01 },
-      { key: 'startDate', label: 'Start Date', type: 'text' },
-      { key: 'endDate', label: 'End Date', type: 'text' },
+      { key: 'startDate', label: 'Start Date', type: 'date' as const, required: true},
+      { key: 'endDate', label: 'End Date', type: 'date' as const, required: true},
       { key: 'usageLimit', label: 'Usage Limit', type: 'number', min: 0 },
       { key: 'isActive', label: 'Active', type: 'checkbox' },
     ]"

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login, register, forgotPassword, getUser, type User } from '@/api/auth'
 import { api } from '@/api/client'
+import { useCartStore } from './cart'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('token'))
@@ -75,6 +76,9 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err) {
       // Ignore logout errors
     } finally {
+      // Clear cart when user logs out
+      const cartStore = useCartStore()
+      cartStore.clearCart()
       clearAuth()
     }
   }
