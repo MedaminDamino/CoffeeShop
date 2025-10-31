@@ -412,7 +412,25 @@ const stats = [
   
   .section-title {
     font-size: 2rem;
+    text-align: center;
   }
+  .title-underline {
+  width: 60px;
+  height: 3px;
+  background: #8C6353;
+  margin-bottom: 2rem;
+  margin-left: 160px;
+}
+
+  .story-text {
+  font-size: 1.1rem;
+  color: #1A2845;
+  line-height: 1.9;
+  margin-bottom: 1.5rem;
+  opacity: 0.9;
+  text-align: justify;
+}
+
   
   .story-section {
     padding: 60px 15px;

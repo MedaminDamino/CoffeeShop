@@ -195,6 +195,7 @@ const sendFeedback = async () => {
   
   font-family: 'Inter', sans-serif;
   background-color: #faf8f5;
+  
 }
 
 /* Navigation */

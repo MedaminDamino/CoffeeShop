@@ -658,7 +658,16 @@ textarea.form-control {
   
   .section-title {
     font-size: 2rem;
+    text-align: center;
   }
+  .title-underline {
+
+    margin-left: 160px;
+}
+.info-description {
+
+  text-align: justify;
+}
   
   .contact-container {
     padding: 60px 15px;

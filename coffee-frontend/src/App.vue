@@ -54,5 +54,11 @@ onMounted(() => {
   .navbar-nav .nav-item {
     margin-bottom: 0.5rem;
   }
+  html, body, #app {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; 
+}
+
 }
 </style>

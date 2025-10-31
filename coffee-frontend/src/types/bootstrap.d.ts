@@ -16,4 +16,21 @@ declare module 'bootstrap' {
       focus: boolean
     }
   }
+
+  export class Collapse {
+    constructor(element: HTMLElement, options?: Partial<Collapse.Options>)
+    hide(): void
+    show(): void
+    toggle(): void
+    dispose(): void
+    static getInstance(element: HTMLElement): Collapse | null
+    static getOrCreateInstance(element: HTMLElement): Collapse
+  }
+
+  export namespace Collapse {
+    interface Options {
+      parent: string | HTMLElement | null
+      toggle: boolean
+    }
+  }
 }

@@ -101,13 +101,6 @@ const deletingItem = ref<unknown>(null)
 const deleteSubmitting = ref(false)
 const deleteErrorMessage = ref<string | null>(null)
 
-// Computed property for dynamic table height
-const tableMinHeight = computed(() => {
-  const headerHeight = 80 // Approximate header height in pixels
-  const rowHeight = 60 // Approximate row height in pixels
-  const padding = 32 // Container padding
-  return headerHeight + (pageSize.value * rowHeight) + padding
-})
 
 function resetForm() {
   const base: Record<string, unknown> = {}
@@ -538,12 +531,12 @@ async function confirmDelete() {
             <i class="bi bi-plus-lg"></i>
             <span>Add New</span>
           </button>
-          <div class="header-actions">
+         
            <slot name="header-extra"></slot>
              <button class="btn-refresh" @click="reload()">
                <i class="bi bi-arrow-clockwise"></i>Refresh
              </button>
-        </div>
+        
         </div>
       </div>
     </div>
@@ -643,7 +636,7 @@ async function confirmDelete() {
             </tr>
 
             <tr v-else v-for="r in rows" :key="(r as any).id" class="table-row">
-              <td v-for="c in columns" :key="c.key" v-html="getFormattedCellValue(r, c)"></td>
+              <td v-for="c in columns" :key="c.key" :data-label="c.label" v-html="getFormattedCellValue(r, c)"></td>
               <td class="actions-cell">
                 <slot name="actions" :row="r">
                   <div class="action-buttons">
@@ -1069,7 +1062,7 @@ async function confirmDelete() {
               >
                 <span v-if="editSubmitting" class="spinner-small"></span>
                 <i v-else class="bi bi-check-lg"></i>
-                <span>Save Changes</span>
+                <span>Save</span>
               </button>
             </div>
           </div>
@@ -1142,10 +1135,10 @@ async function confirmDelete() {
   border-radius: 20px;
   padding: 2rem;
   box-shadow: 0 2px 8px rgba(26, 40, 69, 0.08);
-  margin: 30px auto; /* centers horizontally */
-  width: fit-content; /* or set a fixed width */
+  margin: 30px auto;
+  width: 100%;
+  max-width: 100%;
 }
-
 
 /* Header */
 .admin-header {
@@ -1164,6 +1157,7 @@ async function confirmDelete() {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .admin-title {
@@ -1188,22 +1182,10 @@ async function confirmDelete() {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.btn-add {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #1A2845;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
+.btn-add,
 .btn-refresh {
   display: flex;
   align-items: center;
@@ -1217,22 +1199,17 @@ async function confirmDelete() {
   font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
 }
 
-.btn-add:hover {
-  background: #8C6353;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(26, 40, 69, 0.2);
-}
+.btn-add:hover,
 .btn-refresh:hover {
   background: #8C6353;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(26, 40, 69, 0.2);
 }
 
-.btn-add i {
-  font-size: 1rem;
-}
+.btn-add i,
 .btn-refresh i {
   font-size: 1rem;
 }
@@ -1320,7 +1297,6 @@ async function confirmDelete() {
   border-radius: 16px;
   overflow: hidden;
   border: 2px solid #EEEAE4;
-  min-height: v-bind('tableMinHeight + "px"'); /* Dynamic height based on page size */
   display: flex;
   flex-direction: column;
 }
@@ -1447,29 +1423,12 @@ async function confirmDelete() {
   font-weight: bold;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .sortable-header {
-    padding: 12px 16px;
-  }
-  
-  .label-text {
-    font-size: 0.85rem;
-  }
-  
-  .sort-icon {
-    font-size: 1rem;
-  }
-}
-
-/* Focus styles for accessibility */
 .sortable-header:focus-visible {
   outline: 2px solid #8C6353;
   outline-offset: -2px;
   z-index: 1;
 }
 
-/* Animation for sort change */
 @keyframes sortPulse {
   0%, 100% { transform: scale(1.3); }
   50% { transform: scale(1.5); }
@@ -1831,7 +1790,8 @@ async function confirmDelete() {
 }
 
 .btn-modal-secondary,
-.btn-modal-primary {
+.btn-modal-primary,
+.btn-modal-danger {
   flex: 1;
   padding: 0.875rem 1.5rem;
   border: none;
@@ -1866,21 +1826,9 @@ async function confirmDelete() {
   box-shadow: 0 4px 12px rgba(26, 40, 69, 0.2);
 }
 
-
 .btn-modal-danger {
   background: #FF4D5A;
-  flex: 1;
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  color: white;
 }
 
 .btn-modal-danger:hover:not(:disabled) {
@@ -1890,7 +1838,8 @@ async function confirmDelete() {
 }
 
 .btn-modal-secondary:disabled,
-.btn-modal-primary:disabled {
+.btn-modal-primary:disabled,
+.btn-modal-danger:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -2106,75 +2055,407 @@ async function confirmDelete() {
   cursor: not-allowed;
 }
 
-/* Responsive */
+/* Mobile Responsive Design */
 @media (max-width: 768px) {
   .admin-container {
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 16px;
+    margin: 15px;
+    width: calc(100% - 30px);
   }
 
-  .admin-title {
-    font-size: 1.5rem;
+  .admin-header {
+    margin-bottom: 1.5rem;
   }
 
   .header-content {
     flex-direction: column;
     align-items: stretch;
+    gap: 1rem;
   }
 
   .title-section {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
     gap: 0.75rem;
   }
 
+  .admin-title {
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  .record-count {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+
   .header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.625rem;
     width: 100%;
   }
 
-  .btn-add {
-    width: 100%;
-    justify-content: center;
-  }
+    .btn-add,
     .btn-refresh {
+      width: 100%;
+      padding: 0.75rem 0.5rem; 
+      font-size: 0.875rem;
+      justify-content: center;
+      min-height: 44px;
+      gap: 0.375rem; /* Reduce gap between icon and text */
+
+    }
+
+    .btn-add i,
+    .btn-refresh i {
+      font-size: 0.875rem; 
+      flex-shrink: 0;
+    }
+    .btn-add span,
+    .btn-refresh span {
+      white-space: nowrap; /* Prevent text wrapping */
+    }
+
+
+  /* Card-based table layout for mobile */
+  .table-container {
+    border-radius: 12px;
+  }
+
+  .modern-table thead {
+    display: none;
+  }
+
+  .modern-table,
+  .modern-table tbody,
+  .modern-table tr,
+  .modern-table td {
+    display: block;
     width: 100%;
-    justify-content: center;
   }
 
-  .table-wrapper {
-    overflow-x: scroll;
-    -webkit-overflow-scrolling: touch;
+  .modern-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 0.75rem;
   }
 
-  .modern-table {
-    min-width: 600px;
+  .modern-table tr {
+    display: flex;
+    flex-direction: column;
+    border: 2px solid #EEEAE4;
+    border-radius: 12px;
+    padding: 1rem;
+    background: white;
+    box-shadow: 0 2px 8px rgba(26, 40, 69, 0.06);
+    margin-bottom: 0;
   }
 
-  .modern-modal {
-    max-height: 95vh;
-    border-radius: 20px;
+  .modern-table tr:hover {
+    background: linear-gradient(135deg, rgba(231, 215, 201, 0.08) 0%, rgba(238, 234, 228, 0.08) 100%);
+    box-shadow: 0 4px 12px rgba(26, 40, 69, 0.1);
   }
 
-  .modal-header {
-    padding: 2rem 1.5rem 1.25rem;
+  .modern-table td {
+    padding: 0.625rem 0;
+    border: none;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    font-size: 0.875rem;
   }
 
-  .modal-body {
-    padding: 1.5rem;
+  .modern-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #8C6353;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+  }
+
+  .modern-table td:not(:last-child) {
+    border-bottom: 1px solid #EEEAE4;
+    padding-bottom: 0.625rem;
+  }
+
+  .modern-table td:not(:first-child) {
+    padding-top: 0.625rem;
+  }
+
+  .actions-cell {
+    text-align: left;
+    padding-top: 0.875rem !important;
+    border-top: 2px solid #EEEAE4 !important;
+    margin-top: 0.25rem;
+    grid-template-columns: 110px 1fr !important;
+  }
+
+  .actions-cell::before {
+    content: 'Actions';
+  }
+
+  .action-buttons {
+    justify-content: flex-start;
+    gap: 0.625rem;
+  }
+
+  .btn-action {
+    width: 42px;
+    height: 42px;
+    font-size: 1rem;
+  }
+
+  /* Pagination mobile styles */
+  .pagination-container {
+    margin-top: 1.5rem;
+    padding: 1rem;
   }
 
   .pagination-controls {
     flex-direction: column;
-    align-items: stretch;
     gap: 1rem;
   }
 
-  .page-navigation {
-    justify-content: center;
+  .page-size-selector {
+    width: 100%;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #EEEAE4 0%, #E7D7C9 100%);
+    border-radius: 10px;
+  }
+
+  .page-size-label,
+  .page-size-text {
+    font-size: 0.8125rem;
+  }
+
+  .page-size-select {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.8125rem;
   }
 
   .page-info {
     text-align: center;
+    width: 100%;
+    font-size: 0.8125rem;
+    padding: 0.5rem;
+    background: #EEEAE4;
+    border-radius: 8px;
+    color: #1A2845;
+    font-weight: 600;
+  }
+
+  .page-navigation {
+    width: 100%;
+    justify-content: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.5rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: #8C6353 #EEEAE4;
+  }
+
+  .page-navigation::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .page-navigation::-webkit-scrollbar-track {
+    background: #EEEAE4;
+    border-radius: 3px;
+  }
+
+  .page-navigation::-webkit-scrollbar-thumb {
+    background: #8C6353;
+    border-radius: 3px;
+  }
+
+  .btn-page-nav,
+  .btn-page-number {
+    min-width: 36px;
+    flex-shrink: 0;
+  }
+
+  /* Modal mobile styles */
+  .modal-overlay {
+    padding: 0;
+    align-items: center;
+  }
+
+  .modern-modal {
+    max-height: 90vh;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+    margin-bottom: 200px;
+  }
+
+  
+
+  .modal-header {
+    padding: 1.75rem 1.25rem 1rem;
+  }
+
+  .modal-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .modal-title {
+    font-size: 1.25rem;
+  }
+
+  .modal-close {
+    top: 1rem;
+    right: 1rem;
+    width: 36px;
+    height: 36px;
+  }
+
+  .modal-body {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .modal-form {
+    gap: 1.25rem;
+  }
+
+  .form-label {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .form-input,
+  .form-select {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9375rem;
+  }
+
+  .modal-footer {
+    padding: 1rem 1.25rem;
+    gap: 0.75rem;
+  }
+
+  .btn-modal-secondary,
+  .btn-modal-primary,
+  .btn-modal-danger {
+    padding: 0.8125rem 1rem;
+    font-size: 0.9375rem;
+  }
+
+  /* Success toast mobile */
+  .success-toast {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    min-width: auto;
+    max-width: none;
+    padding: 0.875rem 1rem;
+  }
+
+  .toast-content span {
+    font-size: 0.875rem;
+  }
+
+  .toast-content i {
+    font-size: 1.125rem;
+  }
+
+  /* Status cards mobile */
+  .status-card {
+    padding: 1.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .status-card i {
+    font-size: 1.5rem;
+  }
+
+  .error-message {
+    padding: 0.875rem 1rem;
+    gap: 0.75rem;
+  }
+
+  .error-message i {
+    font-size: 1.125rem;
+  }
+
+  .error-content p {
+    font-size: 0.875rem;
+  }
+
+  .btn-retry-inline {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Extra small devices (phones in portrait, less than 576px) */
+@media (max-width: 575px) {
+  .admin-container {
+    padding: 0.875rem;
+    margin: 10px;
+    width: calc(100% - 20px);
+    border-radius: 12px;
+  }
+
+  .admin-title {
+    font-size: 1.25rem;
+  }
+
+  .record-count {
+    padding: 0.3rem 0.625rem;
+    font-size: 0.75rem;
+  }
+
+  .modern-table tbody {
+    padding: 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .modern-table tr {
+    padding: 0.875rem;
+  }
+
+  .modern-table td {
+    grid-template-columns: 100px 1fr;
+    gap: 0.625rem;
+    font-size: 0.8125rem;
+  }
+
+  .modern-table td::before {
+    font-size: 0.6875rem;
+  }
+
+  .actions-cell {
+    grid-template-columns: 100px 1fr !important;
+  }
+
+  .btn-action {
+    width: 38px;
+    height: 38px;
+    font-size: 0.9375rem;
+  }
+
+  .page-navigation {
+    gap: 0.375rem;
+  }
+
+  .btn-page-nav,
+  .btn-page-number {
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.8125rem;
   }
 }
 </style>
