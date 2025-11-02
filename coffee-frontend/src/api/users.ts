@@ -26,3 +26,7 @@ export function updateUserRole(userId: number, role: string) {
 export function submitFeedback(feedback: string) {
   return api.post<{ message: string }>('/user/feedback', { feedback }).then((r) => r.data)
 }
+
+export function deleteUser(userId: number) {
+  return api.delete(`/users/${userId}`).then((r) => r.data)
+}

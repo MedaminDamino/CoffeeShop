@@ -235,6 +235,46 @@ class UserController extends Controller
         return response()->json($user, 201);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/api/users/{id}",
+     *     summary="Delete a user",
+     *     tags={"Users"},
+     *     security={{"sanctum": {}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=204,
+     *         description="User deleted successfully"
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - Super admin access required"
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="User not found"
+     *     )
+     * )
+     */
+    public function destroy(User $user)
+    {
+        $this->authorizeSuperAdmin();
+
+        // Prevent deleting self
+        if ($user->id === auth()->id()) {
+            abort(403, 'Cannot delete your own account');
+        }
+
+        $user->delete();
+
+        return response()->noContent();
+    }
+
     private function authorizeSuperAdmin()
     {
         $user = auth()->user();

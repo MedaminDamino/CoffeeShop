@@ -98,16 +98,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Fetch user info
+  const fetchUser = async () => {
+    try {
+      user.value = await getUser()
+    } catch (error) {
+      // Token might be invalid, clear auth
+      clearAuth()
+    }
+  }
+
   // Initialize auth on app start
   const initializeAuth = async () => {
     if (token.value) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
-      try {
-        user.value = await getUser()
-      } catch (error) {
-        // Token might be invalid, clear auth
-        clearAuth()
-      }
+      await fetchUser()
     }
   }
 
@@ -117,10 +122,12 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading,
     error,
     isAuthenticated,
+    setToken,
     loginUser,
     registerUser,
     logout,
     sendForgotPassword,
+    fetchUser,
     initializeAuth,
     clearAuth
   }

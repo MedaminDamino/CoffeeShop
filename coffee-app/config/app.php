@@ -124,7 +124,8 @@ return [
     ],
 
     'providers' => [
-Illuminate\Auth\AuthServiceProvider::class,
+    Laravel\Socialite\SocialiteServiceProvider::class,
+    Illuminate\Auth\AuthServiceProvider::class,
     Illuminate\Broadcasting\BroadcastServiceProvider::class,
     Illuminate\Bus\BusServiceProvider::class,
     Illuminate\Cache\CacheServiceProvider::class,
@@ -153,6 +154,9 @@ Illuminate\Auth\AuthServiceProvider::class,
     App\Providers\AppServiceProvider::class,
     App\Providers\RouteServiceProvider::class,
     L5Swagger\L5SwaggerServiceProvider::class,
-    ]
+    ],
+'aliases' => [
+    'Socialite' => Laravel\Socialite\Facades\Socialite::class,
+],
 
 ];

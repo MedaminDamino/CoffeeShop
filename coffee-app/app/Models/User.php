@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\HasApiTokens;
+use App\Notifications\SetPasswordNotification;
+ 
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -34,6 +37,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'birthday',
         'role',
         'feedback',
+        'google_id',
+        'avatar',
+        'is_completed',
     ];
 
     protected $hidden = [

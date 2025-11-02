@@ -69,7 +69,7 @@
                   class="password-toggle"
                   @click="showLoginPassword = !showLoginPassword"
                 >
-                  <svg v-if="!showLoginPassword" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg v-if="showLoginPassword" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
@@ -94,6 +94,19 @@
               <span v-if="authStore.isLoading" class="spinner-border spinner-border-sm me-2"></span>
               {{ authStore.isLoading ? 'Logging in...' : 'Login' }}
             </button>
+
+            <!-- Google Login -->
+            <div class="google-login mt-3 text-center">
+              <button type="button" class="btn-google" @click="loginWithGoogle">
+                <img
+                  src="https://developers.google.com/identity/images/g-logo.png"
+                  alt="Google Logo"
+                  width="20"
+                  class="me-2"
+                />
+                Sign in with Google
+              </button>
+            </div>
           </Form>
 
           <!-- Signup Form -->
@@ -209,7 +222,7 @@
                   class="password-toggle"
                   @click="showSignupPassword = !showSignupPassword"
                 >
-                  <svg v-if="!showSignupPassword" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg v-if="showSignupPassword" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
@@ -529,6 +542,11 @@ const showForgotPassword = () => {
   const forgotModal = new Modal(document.getElementById('forgotPasswordModal')!)
   forgotModal.show()
 }
+const loginWithGoogle = () => {
+  console.log('Frontend: Initiating Google login, redirecting to backend');
+  window.location.href = 'http://localhost:8000/auth/google';
+};
+
 </script>
 
 <style scoped>
@@ -947,4 +965,28 @@ button:focus-visible {
 .modal.show .modal-dialog {
   transform: none;
 }
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #ffffff;
+  color: #444;
+  border: 1px solid #ddd;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  width: 100%;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-google:hover {
+  background-color: #f8f9fa;
+  border-color: #ccc;
+}
+
+.google-login img {
+  vertical-align: middle;
+}
+
 </style>

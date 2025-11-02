@@ -46,7 +46,7 @@
         
         <!-- Desktop actions -->
         <div class="d-none d-lg-flex gap-2 align-items-center">
-          <button v-if="isLoggedIn" class="btn btn-outline-primary btn-sm" @click="goToAdmin">
+          <button v-if="isLoggedIn && isAdmin" class="btn btn-outline-primary btn-sm" @click="goToAdmin">
             Admin Panel
           </button>
           <button v-if="!isLoggedIn" class="btn btn-outline-secondary btn-sm" @click="openLoginModal">
@@ -64,7 +64,7 @@
         <!-- Mobile actions -->
         <div class="d-lg-none mt-3 pb-3 mobile-actions">
           <div class="d-flex flex-column gap-2">
-            <button v-if="isLoggedIn" class="btn btn-outline-primary w-100" @click="goToAdmin">
+            <button v-if="isLoggedIn && isAdmin" class="btn btn-outline-primary w-100" @click="goToAdmin">
               <i class="bi bi-speedometer2 me-2"></i>Admin Panel
             </button>
             <button v-if="!isLoggedIn" class="btn btn-outline-secondary w-100" @click="openLoginModal">
@@ -91,6 +91,7 @@ const authStore = useAuthStore()
 const cartStore = useCartStore()
 
 const isLoggedIn = computed(() => authStore.isAuthenticated)
+const isAdmin = computed(() => authStore.user?.role === 'admin' || authStore.user?.role === 'super_admin')
 const cartItemCount = computed(() => cartStore.totalItems)
 
 const closeMenu = () => {

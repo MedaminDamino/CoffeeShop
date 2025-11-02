@@ -18,7 +18,13 @@ const router = createRouter({
     { path: '/checkout/online', name: 'online-checkout', component: () => import('../pages/user/OnlineCheckoutPape.vue') },
     { path: '/about', name: 'about', component: () => import('../pages/user/AboutPage.vue') },
     { path: '/contact', name: 'contact', component: () => import('../pages/user/ContactPage.vue') },
+    { path: '/complete-profile', name: 'complete-profile', component: () => import('../components/CompleteProfile.vue') },
 
+    {
+      path: '/google/callback',
+      name: 'GoogleCallback',
+      component: () => import('../components/GoogleCallback.vue')
+    },
 
 
     {

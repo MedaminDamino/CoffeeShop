@@ -10,18 +10,29 @@
     :defaultPageSize="5"
   >
     <template #actions="{ row }">
-      <select
-        v-if="canChangeRole(row as User)"
-        :value="(row as User).role"
-        @change="changeRole(row as User, $event)"
-        class="form-select form-select-sm"
-        :disabled="updatingUser === (row as User).id"
-      >
-        <option value="user">User</option>
-        <option value="admin">Admin</option>
-        <option v-if="currentUserRole === 'super_admin'" value="super_admin">Super Admin</option>
-      </select>
-      <span v-else class="text-muted small">Cannot modify</span>
+      <div class="action-buttons">
+        <select
+          v-if="canChangeRole(row as User)"
+          :value="(row as User).role"
+          @change="changeRole(row as User, $event)"
+          class="form-select form-select-sm"
+          :disabled="updatingUser === (row as User).id"
+        >
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+          <option v-if="currentUserRole === 'super_admin'" value="super_admin">Super Admin</option>
+        </select>
+        <span v-else class="text-muted small">Cannot modify</span>
+
+        <button
+          v-if="canDeleteUser(row as User)"
+          class="btn btn-sm btn-outline-danger ms-2"
+          @click="confirmDeleteUser(row as User)"
+          :disabled="deletingUser === (row as User).id"
+        >
+          <i class="bi bi-trash"></i> Supprimer
+        </button>
+      </div>
     </template>
   </CrudTable>
 </template>
@@ -29,13 +40,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import CrudTable from '@/components/admin/CrudTable.vue'
-import { getUsers, createUser, updateUserRole, type User } from '@/api/users'
+import { getUsers, createUser, updateUserRole, deleteUser, type User } from '@/api/users'
 import { useAuthStore } from '@/stores/auth'
 
 const crudTable = ref()
 
 const authStore = useAuthStore()
 const updatingUser = ref<number | null>(null)
+const deletingUser = ref<number | null>(null)
 
 const currentUserRole = computed(() => authStore.user?.role)
 
@@ -45,6 +57,15 @@ const canChangeRole = (user: User) => {
     return user.id !== authStore.user?.id // Can't change own role
   }
   // Admin cannot change roles
+  return false
+}
+
+const canDeleteUser = (user: User) => {
+  // Super admin can delete anyone except themselves
+  if (currentUserRole.value === 'super_admin') {
+    return user.id !== authStore.user?.id
+  }
+  // Admin cannot delete users
   return false
 }
 
@@ -63,6 +84,24 @@ const changeRole = async (user: User, event: Event) => {
     target.value = user.role // Reset select
   } finally {
     updatingUser.value = null
+  }
+}
+
+const confirmDeleteUser = async (user: User) => {
+  if (!confirm(`Are you sure you want to delete user "${user.name}" (${user.email})? This action cannot be undone.`)) {
+    return
+  }
+
+  deletingUser.value = user.id
+  try {
+    await deleteUser(user.id)
+    // Refresh the table
+    crudTable.value?.reload()
+  } catch (error) {
+    console.error('Failed to delete user:', error)
+    alert('Failed to delete user. Please try again.')
+  } finally {
+    deletingUser.value = null
   }
 }
 

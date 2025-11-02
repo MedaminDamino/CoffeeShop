@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
+use Laravel\Socialite\Facades\Socialite;
 
 
 class AuthController extends Controller
@@ -136,7 +138,103 @@ class AuthController extends Controller
             'user' => $user,
         ]);
     }
+    // google auth
+    public function redirectToGoogle()
+    {
+        Log::info('Backend: Redirecting to Google OAuth');
+        return Socialite::driver('google')->redirect();
+    }
 
+    public function handleGoogleCallback()
+    {
+        try {
+            Log::info('Backend: Handling Google OAuth callback');
+            $googleUser = Socialite::driver('google')->stateless()->user();
+            Log::info('Backend: Google user retrieved', ['email' => $googleUser->getEmail(), 'name' => $googleUser->getName()]);
+
+            // Check if the user exists before creating/updating
+            $existingUser = User::where('email', $googleUser->getEmail())->first();
+
+             // If existing, update info
+            if ($existingUser) {
+                Log::info('Backend: Existing user found, updating Google info');
+                $existingUser->update([
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                ]);
+                $user = $existingUser;
+                // Ensure existing users are marked as completed (they already have profiles)
+                if (!$user->is_completed) {
+                    $user->update(['is_completed' => true]);
+                }
+            }
+            else{
+                Log::info('Backend: Creating new user from Google OAuth');
+                 // Find or create the user
+            $user = User::firstOrCreate(
+                ['email' => $googleUser->getEmail()],
+                [
+                    'name' => $googleUser->getName(),
+                    'username' => explode('@', $googleUser->getEmail())[0], // Use part before @ as username
+                    'google_id' => $googleUser->getId(),
+                    'avatar' => $googleUser->getAvatar(),
+                    'password' => Hash::make(bin2hex(random_bytes(16))),
+                    'role' => 'user',
+                    'email_verified_at' => now(),
+                    'is_completed' => false // Mark as incomplete for Google users
+                ]
+            );
+
+            }
+
+
+            // Generate a token (if using Sanctum or JWT)
+            $token = $user->createToken('auth_token')->plainTextToken;
+            Log::info('Backend: Token generated, redirecting to frontend', ['user_id' => $user->id]);
+
+            // Redirect to your frontend with the token
+            Log::info('Backend: Redirecting user', ['user_id' => $user->id, 'is_completed' => $user->is_completed, 'email' => $user->email]);
+            return redirect("http://localhost:5173/google/callback?token={$token}&user=" . urlencode(json_encode(
+                $user->toArray()
+            )));
+
+        } catch (\Exception $e) {
+            Log::error('Backend: Google OAuth callback failed', ['error' => $e->getMessage()]);
+            return redirect("http://localhost:5173/?error=" . urlencode($e->getMessage()));
+        }
+    }
+
+    public function completeProfile(Request $request)
+    {
+        Log::info('Backend: Complete profile request received', ['user_id' => $request->user()->id ?? 'unknown']);
+
+        $request->validate([
+            'birthday' => 'required|date|before:today',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/',
+                'confirmed',
+            ],
+        ]);
+
+        $user = $request->user();
+
+        if ($user->is_completed) {
+            Log::info('Backend: Profile already completed', ['user_id' => $user->id]);
+            return response()->json(['message' => 'Profile already completed.'], 400);
+        }
+
+        $user->update([
+            'birthday' => $request->birthday,
+            'password' => Hash::make($request->password),
+            'is_completed' => true,
+        ]);
+
+        Log::info('Backend: Profile completed successfully', ['user_id' => $user->id]);
+        return response()->json(['message' => 'Profile completed successfully.']);
+    }
     /**
      * @OA\Post(
      *     path="/api/logout",

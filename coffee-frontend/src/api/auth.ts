@@ -7,6 +7,7 @@ export interface User {
   email: string
   birthday?: string
   role: string
+  is_completed?: boolean
 }
 
 export interface AuthResponse {
